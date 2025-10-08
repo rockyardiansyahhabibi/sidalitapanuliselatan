@@ -247,22 +247,35 @@ function renderGrafikPenduduk(){
   const ctx = document.getElementById('chartPenduduk');
   if(!ctx) return;
 
- if(chartPenduduk) chartPenduduk.destroy();
-chartPenduduk = new Chart(document.getElementById('chartPenduduk'), {
-  type: 'line',
-  data: { /* ... */ },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false, // penting agar pakai tinggi dari .chart-wrap
-    plugins: {
-      tooltip: { callbacks: { label: c => ' ' + new Intl.NumberFormat('id-ID').format(c.parsed.y) + ' jiwa' } }
+if(chartPenduduk) chartPenduduk.destroy();
+  chartPenduduk = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Jumlah Penduduk (jiwa)',
+        data: values,
+        tension: 0.25,
+        pointRadius: 4
+      }]
     },
-    scales: {
-      y: { ticks: { callback: v => new Intl.NumberFormat('id-ID').format(v) } }
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        tooltip: { callbacks: { label: c => ' ' + formatNumber(c.parsed.y) + ' jiwa' } },
+        legend: { display: true }
+      },
+      scales: {
+        y: { ticks: { callback: v => formatNumber(v) } }
+      }
     }
-  }
-});
+  });
+}
 
+document.addEventListener('DOMContentLoaded', renderGrafikPenduduk);
+</script>
+<!-- ===== /TAB: GRAFIK ===== -->
 document.addEventListener('DOMContentLoaded', renderGrafikPenduduk);
 </script>
     <!-- TAB: DATA -->
