@@ -1,389 +1,576 @@
 <!DOCTYPE html>
-<html lang="id" class="scroll-smooth">
+<html lang="id">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>SiDali Tapsel – Sistem Digitalisasi Kecamatan Tapanuli Selatan</title>
-  <meta name="description" content="SiDali Tapsel: Dashboard wilayah, unggah kegiatan kecamatan, dan kontrol perizinan editor." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: { jakarta: ['Plus Jakarta Sans', 'ui-sans-serif', 'system-ui'] },
-          colors: { primary: { DEFAULT:'#16a34a',50:'#ecfdf5',100:'#d1fae5',200:'#a7f3d0',300:'#6ee7b7',400:'#34d399',500:'#10b981',600:'#16a34a',700:'#15803d',800:'#166534',900:'#14532d' }, neon:'#a3e635' },
-          boxShadow: { glow: '0 0 0 4px rgb(163 230 53 / 30%)' }
-        }
-      },
-      darkMode: 'class'
-    }
-  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
-    :root { color-scheme: light dark; }
-    .glass { backdrop-filter: blur(8px); background: linear-gradient(145deg, rgba(255,255,255,.65), rgba(255,255,255,.35)); }
-    .glass-dark { backdrop-filter: blur(10px); background: linear-gradient(145deg, rgba(24,24,27,.65), rgba(24,24,27,.45)); }
-    .tab-btn[aria-selected="true"]{ background: rgba(22,163,74,.12); border-color: rgba(22,163,74,.35); }
-    td[contenteditable="true"] { outline: 2px dashed transparent; }
-    td[contenteditable="true"]:focus { outline-color: rgba(22,163,74,.6); background: rgba(22,163,74,.06); }
-    .badge { font-size:11px; padding:2px 8px; border-radius:9999px; }
+    :root{
+      /* Hijau keemasan */
+      --bg:#0f1310;          /* background gelap elegan */
+      --card:#141a16;        /* kartu */
+      --muted:#7a8a7f;       /* teks sekunder */
+      --text:#eef3ee;        /* teks utama */
+      --gold:#d8b45b;        /* aksen keemasan */
+      --green:#1b7d5b;       /* aksen hijau */
+      --line:#253028;        /* garis */
+      --danger:#e25555;
+      --success:#21a465;
+    }
+    * { box-sizing: border-box }
+    html, body { height:100% }
+    body{
+      margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial; color:var(--text); background:var(--bg);
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
+    }
+    a{ color:var(--gold); text-decoration:none }
+    a:hover{ text-decoration:underline }
+
+    /* Layout */
+    .shell{ display:grid; grid-template-columns: 280px 1fr; min-height:100vh }
+    aside{
+      border-right:1px solid var(--line); padding:20px; position:sticky; top:0; height:100vh; overflow:auto;
+      background:linear-gradient(180deg, #121813 0%, #0f1310 100%);
+    }
+    main{ padding:24px; }
+
+    /* Brand */
+    .brand{ display:flex; align-items:center; gap:12px; margin-bottom:16px }
+    .brand img{ width:40px; height:40px; object-fit:cover; border-radius:10px; border:1px solid var(--line) }
+    .brand h1{ font-size:18px; line-height:1.2; margin:0 }
+    .brand .sub{ color:var(--muted); font-size:12px }
+
+    /* Nav */
+    nav{ display:flex; flex-direction:column; gap:6px; margin-top:8px }
+    .nav-btn{
+      display:flex; align-items:center; gap:10px; width:100%; border:1px solid var(--line); background:var(--card);
+      color:var(--text); padding:10px 12px; border-radius:12px; cursor:pointer; transition:.2s ease;
+    }
+    .nav-btn .dot{ width:8px; height:8px; border-radius:99px; background:var(--line) }
+    .nav-btn.active{ border-color:var(--gold); box-shadow:0 0 0 2px #d8b45b22 inset }
+    .nav-btn:hover{ transform:translateY(-1px) }
+
+    /* Header actions */
+    .actions{ display:flex; gap:10px; margin-top:14px }
+    .btn{ display:inline-flex; align-items:center; gap:8px; border:1px solid var(--line); background:var(--card); color:var(--text);
+      padding:10px 12px; border-radius:12px; cursor:pointer; transition:.2s }
+    .btn:hover{ transform:translateY(-1px) }
+    .btn.ghost{ background:transparent }
+    .btn.primary{ background:linear-gradient(135deg, #1b7d5b, #2e9b65); border-color:#2c7e60 }
+    .btn.gold{ background:linear-gradient(135deg, #caa752, #e7c972); color:#14140f; border-color:#b89543 }
+
+    /* Cards */
+    .grid{ display:grid; grid-template-columns: repeat(12,1fr); gap:16px }
+    .card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px }
+    .muted{ color:var(--muted) }
+    .section-title{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px }
+
+    /* Stats */
+    .stats{ display:grid; grid-template-columns: repeat(3,1fr); gap:12px }
+    .stat{ padding:14px; border-radius:14px; border:1px solid var(--line); background:linear-gradient(180deg,#131a15,#0f1310) }
+    .stat .label{ color:var(--muted); font-size:12px }
+    .stat .value{ font-weight:700; font-size:28px; margin-top:4px }
+
+    /* Tables */
+    table{ width:100%; border-collapse:collapse; font-size:14px }
+    thead th{ text-align:left; color:var(--muted); font-weight:600; border-bottom:1px solid var(--line); padding:10px }
+    tbody td{ border-bottom:1px solid var(--line); padding:10px; vertical-align:top }
+    .table-actions{ display:flex; gap:6px }
+
+    .toolbar{ display:flex; gap:10px; flex-wrap:wrap }
+    .field{ display:flex; flex-direction:column; gap:6px }
+    .input, select, textarea{ background:#0f1411; border:1px solid var(--line); color:var(--text); border-radius:10px; padding:10px }
+    textarea{ min-height:110px }
+
+    .right{ margin-left:auto }
+    .mt8{ margin-top:8px } .mt12{ margin-top:12px } .mt16{ margin-top:16px }
+    .mb8{ margin-bottom:8px } .mb12{ margin-bottom:12px } .mb16{ margin-bottom:16px }
+
+    /* Badges */
+    .badge{ font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted) }
+    .badge.ok{ border-color:#225f46; color:#b6f3d0; background:#10221b }
+    .badge.wait{ border-color:#6b5b25; color:#ffe7a9; background:#1a160c }
+    .badge.no{ border-color:#5b2525; color:#ffc3c3; background:#1a0f0f }
+
+    /* Toast */
+    .toast{ position:fixed; right:16px; bottom:16px; z-index:9999; padding:12px 14px; border-radius:12px; border:1px solid var(--line); background:var(--card); box-shadow:0 10px 30px #0007; display:none }
+    .toast.show{ display:block }
+
+    /* Skeleton */
+    .skeleton{ position:relative; overflow:hidden; background:#111512; border-radius:10px; height:14px }
+    .skeleton::after{ content:""; position:absolute; inset:0; background:linear-gradient(90deg,transparent, #ffffff22, transparent); transform:translateX(-100%); animation:shimmer 1.3s infinite }
+    @keyframes shimmer{ 100%{ transform:translateX(100%) } }
+
+    /* Responsive */
+    @media (max-width: 1024px){ .shell{ grid-template-columns: 1fr } aside{ position:static; height:auto } }
   </style>
 </head>
-<body class="font-jakarta bg-gradient-to-br from-primary-50 via-white to-blue-50 dark:from-zinc-900 dark:via-zinc-950 dark:to-zinc-900 text-zinc-900 dark:text-zinc-100 min-h-screen">
-  <!-- Edit Bar -->
-  <div id="editBar" class="sticky top-0 z-50 border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-950/70 backdrop-blur">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between text-sm">
-      <div class="flex items-center gap-2">
-        <span class="px-2 py-0.5 rounded-lg text-xs border border-zinc-300 dark:border-zinc-700" id="editStatus">Mode: <strong>Baca</strong></span>
-        <span class="hidden md:inline text-zinc-500" id="adminEmailLabel"></span>
-      </div>
-      <div class="flex items-center gap-2">
-        <button id="btnRequestEdit" class="px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700">Minta Izin Edit</button>
-        <button id="btnEnterCode" class="px-3 py-1.5 rounded-lg bg-primary-600 text-white">Masuk Editor (Kode)</button>
-        <button id="btnExitEdit" class="hidden px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700">Keluar Editor</button>
-        <button id="btnAdmin" class="px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700">Panel Admin</button>
+<body>
+<div class="shell">
+  <aside>
+    <div class="brand">
+      <img id="logo-tapsel" src="https://raw.githubusercontent.com/rockyardiansyahhabibi/sidalitapanuliselatan/main/assets/logo-tapsel.png" alt="Logo Tapsel"/>
+      <div>
+        <h1>SiDali Tapsel</h1>
+        <div class="sub">Sistem Digitalisasi Kecamatan – Tapanuli Selatan</div>
       </div>
     </div>
-  </div>
 
-  <!-- Topbar -->
-  <header class="border-b border-zinc-200/60 dark:border-zinc-800/80 bg-white/70 dark:bg-zinc-950/60 backdrop-blur">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center gap-3">
-      <button id="sidebarToggle" class="p-2 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:shadow-glow transition" title="Toggle sidebar">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path d="M3.75 5.25h16.5m-16.5 6h16.5m-16.5 6h16.5"/></svg>
-      </button>
-      <div class="flex items-center gap-3">
-        <img src="https://drive.google.com/file/d/1SxmyRuRI_1GS3yt7AdOxoki5j7q78_q7/view?usp=sharing"
-  alt="Logo SiDali Tapsel"
-  class="w-9 h-9 rounded-xl bg-white/80 p-1 ring-1 ring-zinc-200"/>
-        <img src="https://drive.google.com/file/d/1SMBJAKKvfbXLdWPLgd9mlJwPA_tKnOe3/view?usp=sharing"
-  alt="Lambang Kabupaten Tapanuli Selatan"
-  class="w-9 h-9 rounded-xl bg-white/80 p-1 ring-1 ring-zinc-200"/>
-      <div class="flex-1">
-        <h1 class="text-base sm:text-lg font-extrabold tracking-tight">SiDali Tapsel – <span class="text-primary-700 dark:text-primary-300">Sistem Digitalisasi Kecamatan</span></h1>
-        <p class="text-xs sm:text-sm text-zinc-500">Bagian Tata Pemerintahan – Sekretariat Daerah Kabupaten Tapanuli Selatan</p>
+    <nav id="nav">
+      <button class="nav-btn active" data-tab="ringkasan"><span class="dot"></span> Ringkasan</button>
+      <button class="nav-btn" data-tab="grafik"><span class="dot"></span> Grafik</button>
+      <button class="nav-btn" data-tab="data"><span class="dot"></span> Data Wilayah</button>
+      <button class="nav-btn" data-tab="kegiatan"><span class="dot"></span> Kegiatan Kecamatan</button>
+      <button class="nav-btn" data-tab="pengumuman"><span class="dot"></span> Pengumuman</button>
+      <button class="nav-btn" data-tab="tentang"><span class="dot"></span> Tentang</button>
+    </nav>
+
+    <div class="actions">
+      <button class="btn gold" id="btn-settings">Pengaturan</button>
+      <a class="btn ghost" href="https://docs.google.com/spreadsheets/d/1m3jITIs6dLgWQBrLwt-uKWHbGR8O88s1RNzmGQVwwJo/edit?usp=sharing" target="_blank">Spreadsheet</a>
+    </div>
+  </aside>
+
+  <main>
+    <!-- TAB: RINGKASAN -->
+    <section id="tab-ringkasan" class="card">
+      <div class="section-title">
+        <h2>Ringkasan Data</h2>
+        <div class="badge" id="badge-updated">Terakhir sinkron: –</div>
       </div>
-      <div class="hidden md:flex items-center gap-2">
-        <div class="relative">
-          <input id="search" placeholder="Cari data, camat, kelurahan…" class="w-64 md:w-80 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 focus:outline-none focus:ring-2 focus:ring-neon"/>
-          <span class="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400">⌘K</span>
+      <div class="stats mb16">
+        <div class="stat"><div class="label">Kecamatan</div><div class="value" id="stat-kec">—</div></div>
+        <div class="stat"><div class="label">Kelurahan/Desa</div><div class="value" id="stat-kel">—</div></div>
+        <div class="stat"><div class="label">Lingkungan/Dusun</div><div class="value" id="stat-lk">—</div></div>
+      </div>
+      <div class="grid">
+        <div class="card" style="grid-column: span 7">
+          <div class="section-title"><strong>Sebaran Data per Kecamatan</strong><span class="muted">Sumber: Sheet</span></div>
+          <canvas id="chartSebaran" height="220"></canvas>
         </div>
-        <button id="themeToggle" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 hover:shadow-glow transition" title="Toggle tema">
-          <svg id="iconSun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 hidden"><path d="M12 18a6 6 0 100-12 6 6 0 000 12z"/><path fill-rule="evenodd" d="M12 2.25a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V3A.75.75 0 0112 2.25zm0 15a.75.75 0 01.75.75v1.5a.75.75 0 01-1.5 0V18a.75.75 0 01.75-.75zM4.72 4.72a.75.75 0 011.06 0l1.06 1.06a.75.75 0 11-1.06 1.06L4.72 5.78a.75.75 0 010-1.06zm12.43 12.43a.75.75 0 011.06 0l1.06 1.06a.75.75 0 11-1.06 1.06l-1.06-1.06a.75.75 0 010-1.06zM2.25 12A.75.75 0 013 11.25h1.5a.75.75 0 010 1.5H3A.75.75 0 012.25 12zm15 0a.75.75 0 01.75-.75H19.5a.75.75 0 010 1.5h-1.5a.75.75 0 01-.75-.75zM4.72 19.28a.75.75 0 010-1.06l1.06-1.06a.75.75 0 111.06 1.06L5.78 19.28a.75.75 0 01-1.06 0z" clip-rule="evenodd"/></svg>
-          <svg id="iconMoon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-        </button>
+        <div class="card" style="grid-column: span 5">
+          <div class="section-title"><strong>Komposisi Wilayah</strong><span class="muted">Proporsi kel/desa</span></div>
+          <canvas id="chartKomposisi" height="220"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: GRAFIK -->
+    <section id="tab-grafik" class="card" hidden>
+      <div class="section-title">
+        <h2>Grafik Detail</h2>
+        <div class="toolbar right">
+          <select id="selectKecamatan"></select>
+          <button class="btn" id="btn-refresh-chart">Muat Ulang</button>
+        </div>
+      </div>
+      <canvas id="chartDetail" height="340"></canvas>
+    </section>
+
+    <!-- TAB: DATA -->
+    <section id="tab-data" class="card" hidden>
+      <div class="section-title">
+        <h2>Data Wilayah</h2>
+        <div class="toolbar right">
+          <input class="input" id="searchData" placeholder="Cari nama / kecamatan…">
+          <button class="btn" id="btn-export-csv">Unduh CSV</button>
+        </div>
+      </div>
+      <div class="badge mb12">Sumber: Data Camat, Data Lurah, Data Kepling</div>
+      <div class="grid">
+        <div class="card" style="grid-column: span 12">
+          <div class="section-title"><strong>Data Camat</strong><span class="muted" id="countCamat">– data</span></div>
+          <div class="skeleton mb12" id="skelCamat" style="height:32px"></div>
+          <div class="table-wrap"><table id="tblCamat"></table></div>
+        </div>
+        <div class="card" style="grid-column: span 12">
+          <div class="section-title"><strong>Data Lurah/Desa</strong><span class="muted" id="countLurah">– data</span></div>
+          <div class="skeleton mb12" id="skelLurah" style="height:32px"></div>
+          <div class="table-wrap"><table id="tblLurah"></table></div>
+        </div>
+        <div class="card" style="grid-column: span 12">
+          <div class="section-title"><strong>Data Lingkungan/Dusun</strong><span class="muted" id="countKepling">– data</span></div>
+          <div class="skeleton mb12" id="skelKepling" style="height:32px"></div>
+          <div class="table-wrap"><table id="tblKepling"></table></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: KEGIATAN -->
+    <section id="tab-kegiatan" class="card" hidden>
+      <div class="section-title">
+        <h2>Unggah Kegiatan Kecamatan</h2>
+        <div class="badge wait">Status default: Menunggu</div>
+      </div>
+      <div class="grid">
+        <div class="card" style="grid-column: span 7">
+          <div class="field mb12">
+            <label>Nama Penanggung Jawab</label>
+            <input class="input" id="fNama" placeholder="Nama lengkap"/>
+          </div>
+          <div class="grid mb12" style="grid-template-columns: 1fr 1fr; gap:12px">
+            <div class="field"><label>Tanggal</label><input class="input" id="fTanggal" type="date"/></div>
+            <div class="field"><label>Kecamatan</label><input class="input" id="fKec" placeholder="Contoh: Batang Toru"/></div>
+          </div>
+          <div class="field mb12"><label>Deskripsi</label><textarea id="fDesk" placeholder="Ringkas kegiatan"></textarea></div>
+          <div class="field mb12"><label>Lampiran (bisa multi)</label><input class="input" id="fFiles" type="file" multiple accept=".pdf,.jpg,.jpeg,.png"/></div>
+          <div class="toolbar">
+            <button class="btn primary" id="btnUpload">Kirim</button>
+            <div class="muted" id="uploadHint">Ukuran maks 10 MB per file</div>
+          </div>
+        </div>
+        <div class="card" style="grid-column: span 5">
+          <div class="section-title"><strong>Riwayat Kegiatan Terbaru</strong><button class="btn" id="btnReloadKeg">Muat</button></div>
+          <div id="listKegiatan" class="muted">Belum ada data.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: PENGUMUMAN -->
+    <section id="tab-pengumuman" class="card" hidden>
+      <div class="section-title">
+        <h2>Pengumuman</h2>
+        <div class="toolbar right">
+          <button class="btn" id="btnReloadPeng">Muat</button>
+        </div>
+      </div>
+      <div id="listPengumuman" class="muted">Belum ada pengumuman.</div>
+    </section>
+
+    <!-- TAB: TENTANG -->
+    <section id="tab-tentang" class="card" hidden>
+      <h2>Tentang Aplikasi</h2>
+      <p class="muted">SiDali Tapsel memusatkan pembaruan data Camat, Lurah/Desa, dan Kepala Lingkungan/Dusun, serta unggah kegiatan kecamatan melalui integrasi Google Spreadsheet & Apps Script. Desain diperbarui dengan nuansa hijau‑keemasan, aksesibilitas lebih baik, dan performa yang dioptimalkan.</p>
+      <ul>
+        <li>Tema warna baru & tipografi Inter</li>
+        <li>Statistik & grafik Chart.js</li>
+        <li>Tabel responsif, pencarian, dan ekspor CSV</li>
+        <li>Form unggah kegiatan (multi‑file) dengan validasi</li>
+        <li>Toast notifikasi, skeleton loading, dan empty‑state</li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+
+<!-- Dialog Pengaturan -->
+<dialog id="dlgSettings" style="border:none; border-radius:16px; background:var(--card); color:var(--text); padding:0; max-width:720px; width:92%">
+  <form method="dialog" style="padding:16px 16px 12px">
+    <div class="section-title">
+      <h3>Pengaturan Integrasi</h3>
+      <button class="btn" value="close">Tutup</button>
+    </div>
+    <div class="grid" style="grid-template-columns: 1fr 1fr; gap:12px">
+      <div class="field">
+        <label>Spreadsheet ID</label>
+        <input class="input" id="cfgSheetId" placeholder="1m3jITIs6dL…"/>
+      </div>
+      <div class="field">
+        <label>Apps Script Endpoint</label>
+        <input class="input" id="cfgEndpoint" placeholder="https://script.google.com/macros/s/…/exec"/>
+      </div>
+      <div class="field">
+        <label>Email Admin</label>
+        <input class="input" id="cfgEmail" placeholder="rockyardiansyahhabibi@gmail.com"/>
+      </div>
+      <div class="field">
+        <label>Admin Token (opsional)</label>
+        <input class="input" id="cfgToken" placeholder="Token sementara aksi admin"/>
       </div>
     </div>
-  </header>
+    <div class="toolbar mt16">
+      <button class="btn primary" id="btnSaveCfg" type="button">Simpan</button>
+      <button class="btn" id="btnLoadAll" type="button">Muat Semua Data</button>
+    </div>
+    <p class="muted mt12">Catatan: kredensial sensitif sebaiknya tidak disimpan di browser. Lindungi endpoint dengan autentikasi berbasis email di Apps Script.</p>
+  </form>
+</dialog>
 
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-12 gap-4">
-    <!-- Sidebar -->
-    <aside id="sidebar" class="col-span-12 lg:col-span-3 space-y-4 transition-all">
-      <div class="glass dark:glass-dark rounded-2xl p-4 ring-1 ring-zinc-200/70 dark:ring-zinc-800/80">
-        <div class="flex items-center justify-between">
-          <h2 class="text-sm font-semibold tracking-wide">Navigasi</h2>
-          <span class="text-[10px] px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-200">Gen Z</span>
-        </div>
-        <nav class="mt-3 grid gap-1 text-sm">
-          <a href="#ringkasan" class="px-3 py-2 rounded-xl hover:bg-primary-50 dark:hover:bg-zinc-800/60 flex items-center gap-2">📊 Ringkasan</a>
-          <a href="#grafik" class="px-3 py-2 rounded-xl hover:bg-primary-50 dark:hover:bg-zinc-800/60 flex items-center gap-2">📈 Grafik</a>
-          <a href="#tabel" class="px-3 py-2 rounded-xl hover:bg-primary-50 dark:hover:bg-zinc-800/60 flex items-center gap-2">📋 Data Wilayah</a>
-          <a href="#kegiatan" class="px-3 py-2 rounded-xl hover:bg-primary-50 dark:hover:bg-zinc-800/60 flex items-center gap-2">🗓️ Kegiatan Kecamatan</a>
-          <a href="#pengumuman" class="px-3 py-2 rounded-xl hover:bg-primary-50 dark:hover:bg-zinc-800/60 flex items-center gap-2">📣 Pengumuman</a>
-          <a href="#tentang" class="px-3 py-2 rounded-xl hover:bg-primary-50 dark:hover:bg-zinc-800/60 flex items-center gap-2">🏛️ Tentang Tapanuli Selatan</a>
-        </nav>
-      </div>
+<div class="toast" id="toast"></div>
 
-      <!-- Settings -->
-      <div class="glass dark:glass-dark rounded-2xl p-4 ring-1 ring-zinc-200/70 dark:ring-zinc-800/80">
-        <h2 class="text-sm font-semibold">Pengaturan Data</h2>
-        <p class="text-xs text-zinc-500 mt-1">Google Sheets, admin gate, & upload endpoint.</p>
-        <div class="mt-3 grid gap-2 text-sm">
-          <label class="grid gap-1"><span>Spreadsheet ID</span><input id="inSheetId" placeholder="1m3jITIs6dLgWQBrLwt-uKWHbGR8O88s1RNzmGQVwwJo" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/50"/></label>
-          <div class="grid grid-cols-3 gap-2">
-            <label class="grid gap-1 col-span-1"><span>Sheet Camat</span><input id="inSheetCamat" value="Data Camat" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/50"/></label>
-            <label class="grid gap-1 col-span-1"><span>Sheet Lurah</span><input id="inSheetLurah" value="Data Lurah" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/50"/></label>
-            <label class="grid gap-1 col-span-1"><span>Sheet Kepling</span><input id="inSheetKepling" value="Data Kepling" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/50"/></label>
-          </div>
-          <label class="grid gap-1"><span>Email Admin</span><input id="inAdminEmail" placeholder="admin@tapanselkab.go.id" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/50"/></label>
-          <label class="grid gap-1"><span>Upload Endpoint (Apps Script Web App)</span><input id="inUploadEndpoint" placeholder="https://script.google.com/macros/s/AKfycbxxxx/exec" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/50"/></label>
-          <label class="grid gap-1"><span>Admin Token (untuk setujui/tolak)</span><input id="inAdminToken" placeholder="contoh: SIDALI-ADMIN-2025" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/50"/></label>
-          <button id="btnSaveSettings" class="mt-2 px-3 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold">Simpan Pengaturan</button>
-          <button id="btnLoadAll" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700 hover:bg-primary-50 dark:hover:bg-zinc-800/50">Muat Semua Data</button>
-        </div>
-        <p class="text-[11px] text-zinc-500 mt-2">Endpoint menerima <code>multipart/form-data</code> (action=submit/setStatus). Lihat README untuk Apps Script.</p>
-      </div>
+<script>
+  /***********************\
+   * KONFIG & UTILITAS   *
+  \***********************/
+  const CONFIG_KEY = 'sidali_cfg_v2';
+  const CONFIG = loadConfig();
 
-      <!-- Upload Kegiatan -->
-      <div class="glass dark:glass-dark rounded-2xl p-4 ring-1 ring-zinc-200/70 dark:ring-zinc-800/80" id="uploadPanel">
-        <h2 class="text-sm font-semibold">Unggah Kegiatan Kecamatan</h2>
-        <p class="text-xs text-zinc-500 mt-1">Isi form di bawah untuk menambahkan kegiatan. Admin dapat menyetujui/menolak di daftar kegiatan.</p>
-        <div class="mt-3 grid gap-2 text-sm">
-          <label class="grid gap-1"><span>Nama Kegiatan</span><input id="kgNama" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/50"/></label>
-          <div class="grid grid-cols-2 gap-2">
-            <label class="grid gap-1"><span>Tanggal</span><input id="kgTanggal" type="date" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/50"/></label>
-            <label class="grid gap-1"><span>Kecamatan</span><select id="kgKecamatan" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/50"></select></label>
-          </div>
-          <label class="grid gap-1"><span>Deskripsi</span><textarea id="kgDeskripsi" rows="3" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/50"></textarea></label>
-          <label class="grid gap-1"><span>Lampiran (opsional, bisa lebih dari satu)</span><input id="kgFiles" type="file" multiple class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/50"/></label>
-          <button id="kgSubmit" class="mt-1 px-3 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold">Kirim Kegiatan</button>
-          <p class="text-[11px] text-zinc-500">Status awal: <em>Menunggu persetujuan admin</em>.</p>
-        </div>
-      </div>
-    </aside>
+  function loadConfig(){
+    try{ return JSON.parse(localStorage.getItem(CONFIG_KEY)) || {
+      sheetId:'1m3jITIs6dLgWQBrLwt-uKWHbGR8O88s1RNzmGQVwwJo',
+      endpoint:'', adminEmail:'', token:''
+    }; }catch(e){ return { sheetId:'', endpoint:'', adminEmail:'', token:'' } }
+  }
+  function saveConfig(){ localStorage.setItem(CONFIG_KEY, JSON.stringify(CONFIG)); }
 
-    <!-- Main -->
-    <main class="col-span-12 lg:col-span-9 space-y-6">
-      <section class="rounded-3xl p-6 ring-1 ring-zinc-200/70 dark:ring-zinc-800/80 glass dark:glass-dark">
-        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div><h2 class="text-xl sm:text-2xl font-extrabold">Selamat datang di <span class="text-primary-700 dark:text-primary-300">SiDali Tapsel</span></h2><p class="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Digitalisasi data wilayah & monitoring kegiatan kecamatan.</p></div>
-          <div class="flex items-center gap-2"><a href="#kegiatan" class="px-4 py-2 rounded-xl bg-black/90 dark:bg-white/90 text-white dark:text-black font-semibold">Pantau Kegiatan</a><a href="#tabel" class="px-4 py-2 rounded-xl border border-zinc-300 dark:border-zinc-700">Data Wilayah</a></div>
-        </div>
-      </section>
+  function toast(msg, ok=false){
+    const t=document.getElementById('toast');
+    t.textContent = msg; t.style.borderColor = ok? '#1c5f46': 'var(--line)'; t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), 2800);
+  }
 
-      <section id="ringkasan" class="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
-        <div class="rounded-2xl p-5 bg-white/70 dark:bg-zinc-900/60 ring-1 ring-zinc-200/70 dark:ring-zinc-800/80"><div class="text-xs text-zinc-500">Jumlah Kecamatan</div><div class="mt-2 flex items-end justify-between"><h3 id="outKec" class="text-3xl font-extrabold tracking-tight">15</h3><span class="badge bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-200">live</span></div></div>
-        <div class="rounded-2xl p-5 bg-white/70 dark:bg-zinc-900/60 ring-1 ring-zinc-200/70 dark:ring-zinc-800/80"><div class="text-xs text-zinc-500">Jumlah Kelurahan/Desa</div><h3 id="outKel" class="mt-2 text-3xl font-extrabold tracking-tight">248</h3></div>
-        <div class="rounded-2xl p-5 bg-white/70 dark:bg-zinc-900/60 ring-1 ring-zinc-200/70 dark:ring-zinc-800/80"><div class="text-xs text-zinc-500">Jumlah Lingkungan/Dusun</div><h3 id="outLing" class="mt-2 text-3xl font-extrabold tracking-tight">1,234</h3></div>
-      </section>
-      <section id="grafik" class="grid lg:grid-cols-2 gap-4">
-        <div class="rounded-2xl p-5 bg-white/70 dark:bg-zinc-900/60 ring-1 ring-zinc-200/70 dark:ring-zinc-800/80"><div class="flex items-center justify-between"><h3 class="font-semibold">Sebaran Kelurahan per Kecamatan</h3><button id="btnRandomize" class="text-xs px-3 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700">Acak</button></div><canvas id="barChart" class="mt-4"></canvas></div>
-        <div class="rounded-2xl p-5 bg-white/70 dark:bg-zinc-900/60 ring-1 ring-zinc-200/70 dark:ring-zinc-800/80"><h3 class="font-semibold">Komposisi Wilayah</h3><canvas id="pieChart" class="mt-4"></canvas></div>
-      </section>
-
-      <section id="tabel" class="rounded-2xl p-5 bg-white/70 dark:bg-zinc-900/60 ring-1 ring-zinc-200/70 dark:ring-zinc-800/80">
-        <div class="flex flex-col gap-3">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <h3 class="font-semibold">Data Wilayah (Camat / Lurah / Kepling)</h3>
-            <div class="flex items-center gap-2">
-              <input id="tableFilter" placeholder="Filter nama atau kecamatan…" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/50"/>
-              <button id="btnUnduhAktif" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700">Unduh CSV (tab aktif)</button>
-            </div>
-          </div>
-          <div class="flex gap-2"><button class="tab-btn px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800" data-tab="camat" aria-selected="true">Data Camat</button><button class="tab-btn px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800" data-tab="lurah">Data Lurah</button><button class="tab-btn px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800" data-tab="kepling">Data Kepling</button></div>
-          <div id="editorTools" class="hidden mt-2 flex flex-wrap items-center gap-2"><button id="btnAddRow" class="px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700">Tambah Baris</button><button id="btnDeleteSelected" class="px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700">Hapus Baris Terpilih</button><button id="btnExportAll" class="px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700">Unduh Semua (3 CSV)</button></div>
-          <div class="overflow-x-auto mt-2">
-            <table id="tblCamat" class="min-w-full text-sm"><thead class="text-left bg-zinc-100/70 dark:bg-zinc-800/40"><tr><th class="px-3 py-2"><input type="checkbox" id="selAllCamat"></th><th class="px-3 py-2">No</th><th class="px-3 py-2">Jabatan</th><th class="px-3 py-2">Nama</th><th class="px-3 py-2">Kecamatan</th><th class="px-3 py-2">Kontak</th></tr></thead><tbody id="bodyCamat"></tbody></table>
-            <table id="tblLurah" class="min-w-full text-sm hidden"><thead class="text-left bg-zinc-100/70 dark:bg-zinc-800/40"><tr><th class="px-3 py-2"><input type="checkbox" id="selAllLurah"></th><th class="px-3 py-2">No</th><th class="px-3 py-2">Jabatan</th><th class="px-3 py-2">Nama</th><th class="px-3 py-2">Kelurahan</th><th class="px-3 py-2">Kontak</th></tr></thead><tbody id="bodyLurah"></tbody></table>
-            <table id="tblKepling" class="min-w-full text-sm hidden"><thead class="text-left bg-zinc-100/70 dark:bg-zinc-800/40"><tr><th class="px-3 py-2"><input type="checkbox" id="selAllKepling"></th><th class="px-3 py-2">No</th><th class="px-3 py-2">Jabatan</th><th class="px-3 py-2">Nama</th><th class="px-3 py-2">Lingkungan</th><th class="px-3 py-2">Kontak</th></tr></thead><tbody id="bodyKepling"></tbody></table>
-          </div>
-        </div>
-      </section>
-
-      <section id="kegiatan" class="rounded-2xl p-5 bg-white/70 dark:bg-zinc-900/60 ring-1 ring-zinc-200/70 dark:ring-zinc-800/80">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-2">
-          <h3 class="font-semibold">Kegiatan Kecamatan</h3>
-          <div class="flex items-center gap-2">
-            <select id="kgFilterKec" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/50"></select>
-            <select id="kgFilterStatus" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/50"><option value="">Semua Status</option><option value="pending">Menunggu</option><option value="approved">Disetujui</option><option value="rejected">Ditolak</option></select>
-          </div>
-        </div>
-        <div id="kgList" class="mt-3 grid gap-3"></div>
-      </section>
-
-      <section id="pengumuman" class="grid md:grid-cols-2 gap-4">
-        <div class="rounded-2xl p-5 bg-white/70 dark:bg-zinc-900/60 ring-1 ring-zinc-200/70 dark:ring-zinc-800/80"><h3 class="font-semibold">Pengumuman</h3><ul id="annList" class="mt-2 space-y-2 text-sm"></ul><div class="mt-3 flex gap-2"><input id="annInput" placeholder="Tulis pengumuman singkat…" class="flex-1 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/50"/><button id="annAdd" class="px-3 py-2 rounded-xl bg-primary-600 hover:bg-primary-700 text-white">Tambah</button></div></div>
-        <div class="rounded-2xl p-5 bg-white/70 dark:bg-zinc-900/60 ring-1 ring-zinc-200/70 dark:ring-zinc-800/80"><h3 class="font-semibold">Agenda Cepat</h3><ul class="mt-2 space-y-2 text-sm" id="agendaList"></ul><div class="mt-3 grid grid-cols-2 gap-2"><input id="agendaTeks" placeholder="Nama agenda" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/50"/><input id="agendaTanggal" type="date" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/50"/><button id="agendaAdd" class="col-span-2 px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-700">Tambah Agenda</button></div></div>
-      </section>
-
-      <footer class="py-6 text-center text-xs text-zinc-500">© <span id="y"></span> SiDali Tapsel – Bagian Tata Pemerintahan, Sekretariat Daerah Kab. Tapanuli Selatan.</footer>
-    </main>
-  </div>
-
-  <!-- Modal -->
-  <dialog id="modal" class="rounded-2xl p-0 w-[92vw] max-w-md bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100">
-    <form method="dialog">
-      <div class="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-        <h3 id="modalTitle" class="font-semibold">Permohonan Akses</h3>
-        <button class="px-2 py-1 rounded-lg border border-zinc-300 dark:border-zinc-700">✕</button>
-      </div>
-      <div class="p-4 space-y-3 text-sm" id="modalBody"></div>
-      <div class="p-4 border-t border-zinc-200 dark:border-zinc-800 text-right">
-        <button class="px-3 py-2 rounded-xl bg-primary-600 text-white" id="modalOk">OK</button>
-      </div>
-    </form>
-  </dialog>
-
-  <script>
-    // === Utilities & constants ===
-    function $(id){ return document.getElementById(id); }
-    const kecamatanLabels = ['Sipirok','Angkola Timur','Angkola Barat','Batang Angkola','Arse','Marancar','Sayurmatinggi'];
-    const st = JSON.parse(localStorage.getItem('sidali-state')||'{}');
-    st.settings = st.settings || { sheetId:'', sheetCamat:'Data Camat', sheetLurah:'Data Lurah', sheetKepling:'Data Kepling', adminEmail:'', uploadEndpoint:'', adminToken:'' };
-    st.tables = st.tables || { camat:[], lurah:[], kepling:[] };
-    st.edit = st.edit || { enabled:false, code:'', knownCode:'' };
-    st.kegiatan = st.kegiatan || []; // local cache of created items
-    saveState();
-    function saveState(){ localStorage.setItem('sidali-state', JSON.stringify(st)); }
-
-    // === Theme & UI ===
-    const themeToggle=$('themeToggle'), iconSun=$('iconSun'), iconMoon=$('iconMoon');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const savedTheme = localStorage.getItem('theme');
-    if ((savedTheme === 'dark') || (!savedTheme && prefersDark)) document.documentElement.classList.add('dark');
-    function syncIcons(){ const d = document.documentElement.classList.contains('dark'); iconSun?.classList.toggle('hidden', !d); iconMoon?.classList.toggle('hidden', d); }
-    syncIcons();
-    themeToggle?.addEventListener('click', () => { document.documentElement.classList.toggle('dark'); localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light'); syncIcons(); });
-    const sidebar = $('sidebar'); $('sidebarToggle')?.addEventListener('click', ()=> sidebar.classList.toggle('hidden'));
-    $('y').textContent = new Date().getFullYear();
-
-    // === Fill settings ===
-    $('inSheetId').value = st.settings.sheetId || '';
-    $('inSheetCamat').value = st.settings.sheetCamat;
-    $('inSheetLurah').value = st.settings.sheetLurah;
-    $('inSheetKepling').value = st.settings.sheetKepling;
-    $('inAdminEmail').value = st.settings.adminEmail || '';
-    $('inUploadEndpoint').value = st.settings.uploadEndpoint || '';
-    $('inAdminToken').value = st.settings.adminToken || '';
-    $('adminEmailLabel').textContent = st.settings.adminEmail ? ('Admin: '+st.settings.adminEmail) : '';
-
-    $('btnSaveSettings').addEventListener('click', ()=>{
-      st.settings.sheetId = $('inSheetId').value.trim();
-      st.settings.sheetCamat = $('inSheetCamat').value.trim() || 'Data Camat';
-      st.settings.sheetLurah = $('inSheetLurah').value.trim() || 'Data Lurah';
-      st.settings.sheetKepling = $('inSheetKepling').value.trim() || 'Data Kepling';
-      st.settings.adminEmail = $('inAdminEmail').value.trim();
-      st.settings.uploadEndpoint = $('inUploadEndpoint').value.trim();
-      st.settings.adminToken = $('inAdminToken').value.trim();
-      saveState();
-      $('adminEmailLabel').textContent = st.settings.adminEmail ? ('Admin: '+st.settings.adminEmail) : '';
-      alert('Pengaturan disimpan.');
+  // Tabs
+  document.querySelectorAll('.nav-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.dataset.tab;
+      document.querySelectorAll('main > section').forEach(sec=> sec.hidden = !sec.id.endsWith(tab));
     });
+  });
 
-    // === Charts ===
-    let barChart, pieChart;
-    function genNumbers(len, max=30){ return Array.from({length: len}, () => Math.floor(Math.random()*max)+5) }
-    function renderCharts(){
-      const barCtx = $('barChart'); const pieCtx = $('pieChart');
-      const dataKelurahan = st.barData || genNumbers(kecamatanLabels.length); st.barData = dataKelurahan; saveState();
-      if (barChart) barChart.destroy(); barChart = new Chart(barCtx, { type:'bar', data:{ labels:kecamatanLabels, datasets:[{ label:'Kel/Desa', data:dataKelurahan }] }, options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true} } } });
-      if (pieChart) pieChart.destroy(); pieChart = new Chart(pieCtx, { type:'pie', data:{ labels:['Kecamatan','Kel/Desa','Ling/Dusun'], datasets:[{ data:[15,248,1234] }] }, options:{ responsive:true } });
+  // Settings dialog
+  const dlg = document.getElementById('dlgSettings');
+  document.getElementById('btn-settings').onclick = ()=>{
+    document.getElementById('cfgSheetId').value = CONFIG.sheetId || '';
+    document.getElementById('cfgEndpoint').value = CONFIG.endpoint || '';
+    document.getElementById('cfgEmail').value = CONFIG.adminEmail || '';
+    document.getElementById('cfgToken').value = CONFIG.token || '';
+    dlg.showModal();
+  }
+  document.getElementById('btnSaveCfg').onclick = ()=>{
+    CONFIG.sheetId = document.getElementById('cfgSheetId').value.trim();
+    CONFIG.endpoint = document.getElementById('cfgEndpoint').value.trim();
+    CONFIG.adminEmail = document.getElementById('cfgEmail').value.trim();
+    CONFIG.token = document.getElementById('cfgToken').value.trim();
+    saveConfig(); toast('Pengaturan disimpan', true);
+  }
+  document.getElementById('btnLoadAll').onclick = ()=>{
+    dlg.close(); loadAll();
+  }
+
+  /***********************\
+   * FETCH DATA DARI SHEET *
+  \***********************/
+  // Catatan:
+  // 1) Agar fetch dari GitHub Pages bisa membaca Sheet, publikasi-kan tiap sheet sebagai CSV (File > Share > Publish to the web > CSV)
+  //    atau gunakan Apps Script endpoint read-only yang mengembalikan JSON.
+  // 2) Di bawah ini disediakan dua mode: via CSV publish atau via Apps Script.
+
+  async function fetchCSV(csvUrl){
+    const res = await fetch(csvUrl, { cache:'no-store' });
+    if(!res.ok) throw new Error('Gagal memuat CSV');
+    const text = await res.text();
+    // parsing CSV sederhana (asumsi tidak ada koma di dalam sel)
+    return text.split(/\r?\n/).filter(Boolean).map(row=> row.split(','));
+  }
+
+  function publishCsvUrl(sheetId, gid){
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&id=${sheetId}&gid=${gid}`;
+  }
+
+  // GID contoh: sesuaikan dengan Sheet Anda
+  const GIDS = { camat: 0, lurah: 1047805166, kepling: 1542422789 };
+
+  async function getSheetData(){
+    // MODE 1: via CSV publish
+    const [camat, lurah, kepling] = await Promise.all([
+      fetchCSV(publishCsvUrl(CONFIG.sheetId, GIDS.camat)),
+      fetchCSV(publishCsvUrl(CONFIG.sheetId, GIDS.lurah)),
+      fetchCSV(publishCsvUrl(CONFIG.sheetId, GIDS.kepling))
+    ]);
+    return { camat, lurah, kepling };
+
+    // MODE 2 (alternatif): via Apps Script
+    // const res = await fetch(`${CONFIG.endpoint}?action=readAll`, {cache:'no-store'});
+    // return res.json();
+  }
+
+  /***********************\
+   * RENDER UI            *
+  \***********************/
+  let chartSebaran, chartKomposisi, chartDetail;
+
+  function setUpdated(){ document.getElementById('badge-updated').textContent = 'Terakhir sinkron: ' + new Date().toLocaleString('id-ID'); }
+
+  function buildTable(el, rows){
+    if(!rows || !rows.length){ el.innerHTML = '<thead><tr><th>Data</th></tr></thead><tbody><tr><td class="muted">Tidak ada data</td></tr></tbody>'; return; }
+    const [header, ...body] = rows;
+    let thead = '<thead><tr>' + header.map(h=>`<th>${escapeHtml(h)}</th>`).join('') + '</tr></thead>';
+    let tbody = '<tbody>' + body.map(r=>'<tr>'+ r.map(c=>`<td>${escapeHtml(c)}</td>`).join('') + '</tr>').join('') + '</tbody>';
+    el.innerHTML = thead + tbody;
+  }
+
+  function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+
+  function countByKecamatan(lurahRows){
+    const idxKec = lurahRows[0]?.findIndex(h=>/kecamatan/i.test(h)) ?? -1;
+    const map = new Map();
+    for(let i=1;i<lurahRows.length;i++){
+      const kec = (lurahRows[i][idxKec]||'').trim(); if(!kec) continue;
+      map.set(kec, (map.get(kec)||0)+1);
     }
-    renderCharts();
-    $('btnRandomize').addEventListener('click', ()=>{ st.barData = genNumbers(kecamatanLabels.length); saveState(); renderCharts(); });
+    return [...map.entries()].sort((a,b)=> b[1]-a[1]).slice(0,12);
+  }
 
-    // === CSV helpers ===
-    function parseCSV(text){ const rows=[]; let cur='',row=[],q=false; for (let i=0;i<text.length;i++){ const c=text[i],n=text[i+1]; if (c=='"' && q && n=='"'){ cur+='"'; i++; continue; } if (c=='"'){ q=!q; continue; } if (c==',' && !q){ row.push(cur); cur=''; continue; } if ((c=='\n'||c=='\r')&&!q){ if (cur!==''||row.length){ row.push(cur); rows.push(row); row=[]; cur=''; } continue; } cur+=c; } if (cur!==''||row.length){ row.push(cur); rows.push(row); } return rows; }
-    function toCSV(rows){ return rows.map(r=>r.map(v=>{ const s=String(v??''); return /[\",\n]/.test(s)?'"'+s.replace(/\"/g,'""')+'"':s; }).join(',')).join('\n'); }
-    function sheetCSVUrl(sheetName){ if(!st.settings.sheetId) return ''; return `https://docs.google.com/spreadsheets/d/${st.settings.sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`; }
+  function updateStats(data){
+    // Estimasi: hitung unik kecamatan dari sheet Lurah/Desa
+    const byKec = countByKecamatan(data.lurah);
+    const kecCount = byKec.length;
+    const kelCount = (data.lurah.length>1? data.lurah.length-1: 0);
+    const lkCount  = (data.kepling.length>1? data.kepling.length-1: 0);
+    document.getElementById('stat-kec').textContent = kecCount;
+    document.getElementById('stat-kel').textContent = kelCount;
+    document.getElementById('stat-lk').textContent = lkCount;
+  }
 
-    // === Load Wilayah data from Sheets ===
-    async function loadSheetTo(key, name){ const url=sheetCSVUrl(name); if(!url) throw new Error('Spreadsheet ID belum diisi'); const res=await fetch(url); const txt=await res.text(); const rows=parseCSV(txt);
-      const data=rows.slice(1).map(c=>({jabatan:(c[0]||'').trim(), nama:(c[1]||'').trim(), unit:(c[2]||'').trim(), kontak:(c[3]||'').trim()})).filter(x=>x.nama); st.tables[key]=data; saveState(); renderActiveTable(); }
-    $('btnLoadAll').addEventListener('click', async ()=>{ try{ await loadSheetTo('camat',st.settings.sheetCamat); await loadSheetTo('lurah',st.settings.sheetLurah); await loadSheetTo('kepling',st.settings.sheetKepling); alert('Data dari tiga sheet berhasil dimuat.'); }catch(e){ alert('Gagal memuat: '+e.message); } });
+  function renderCharts(data){
+    const ctx1 = document.getElementById('chartSebaran');
+    const ctx2 = document.getElementById('chartKomposisi');
 
-    // === Tabs & table rendering ===
-    const tabBtns = document.querySelectorAll('.tab-btn'); tabBtns.forEach(b=>b.addEventListener('click',()=>switchTab(b.dataset.tab)));
-    function getActiveTab(){ return document.querySelector('.tab-btn[aria-selected="true"]')?.dataset.tab || 'camat'; }
-    function switchTab(tab){ tabBtns.forEach(b=>b.setAttribute('aria-selected', String(b.dataset.tab===tab))); $('tblCamat').classList.toggle('hidden',tab!=='camat'); $('tblLurah').classList.toggle('hidden',tab!=='lurah'); $('tblKepling').classList.toggle('hidden',tab!=='kepling'); renderActiveTable(); }
-    switchTab('camat');
-    function filteredRows(rows){ const q=($('tableFilter').value||'').toLowerCase(); return rows.filter(r => (r.jabatan+' '+r.nama+' '+r.unit+' '+(r.kontak||'')).toLowerCase().includes(q)); }
-    function toggleContentEditable(tbody, v){ tbody.querySelectorAll('td[data-k]').forEach(td => td.setAttribute('contenteditable', v?'true':'false')); }
-    function getActiveTBody(){ const tab=getActiveTab(); return ({camat:$('bodyCamat'),lurah:$('bodyLurah'),kepling:$('bodyKepling')})[tab]; }
-    function renderActiveTable(){ const tab=getActiveTab(); const map={camat:$('bodyCamat'),lurah:$('bodyLurah'),kepling:$('bodyKepling')}; const body=map[tab]; const rows=filteredRows(st.tables[tab]||[]); body.innerHTML = rows.map((r,i)=>`<tr class="border-b border-zinc-100 dark:border-zinc-800/70"><td class="px-3 py-2"><input type="checkbox" data-row="${i}"></td><td class="px-3 py-2">${i+1}</td><td class="px-3 py-2" data-k="jabatan">${r.jabatan||''}</td><td class="px-3 py-2" data-k="nama">${r.nama||''}</td><td class="px-3 py-2" data-k="unit">${r.unit||''}</td><td class="px-3 py-2" data-k="kontak">${r.kontak||''}</td></tr>`).join(''); toggleContentEditable(body, st.edit.enabled); }
-    $('tableFilter').addEventListener('input', renderActiveTable);
-    document.addEventListener('input', (e)=>{ const td=e.target.closest('td[contenteditable="true"][data-k]'); if(!td) return; const tbody=td.closest('tbody'); const idx=Array.from(tbody.children).indexOf(td.parentElement); const key=td.dataset.k; const tab=getActiveTab(); (st.tables[tab][idx] ||= {})[key]=td.textContent.trim(); saveState(); });
+    const byKec = countByKecamatan(data.lurah);
+    const labels = byKec.map(x=>x[0]);
+    const values = byKec.map(x=>x[1]);
 
-    function exportCSV(filename, rows){ const csvRows=[['Jabatan','Nama','Unit','Kontak'],...rows.map(r=>[r.jabatan||'',r.nama||'',r.unit||'',r.kontak||''])]; const blob=new Blob([toCSV(csvRows)],{type:'text/csv;charset=utf-8;'}); const url=URL.createObjectURL(blob); const a=Object.assign(document.createElement('a'),{href:url,download:filename}); document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); }
-    $('btnUnduhAktif').addEventListener('click', ()=>{ const tab=getActiveTab(); const name=tab==='camat'?'data-camat.csv':tab==='lurah'?'data-lurah.csv':'data-kepling.csv'; exportCSV(name, st.tables[tab]||[]); });
-    $('btnAddRow').addEventListener('click', ()=>{ const tab=getActiveTab(); (st.tables[tab] ||= []).push({jabatan:'',nama:'',unit:'',kontak:''}); saveState(); renderActiveTable(); });
-    $('btnDeleteSelected').addEventListener('click', ()=>{ const tab=getActiveTab(); const tbody=getActiveTBody(); const idxs=Array.from(tbody.querySelectorAll('input[type="checkbox"][data-row]:checked')).map(cb=>parseInt(cb.dataset.row,10)).sort((a,b)=>b-a); if(!idxs.length) return; idxs.forEach(i=>st.tables[tab].splice(i,1)); saveState(); renderActiveTable(); });
-    $('btnExportAll').addEventListener('click', ()=>{ exportCSV('data-camat.csv',st.tables.camat||[]); exportCSV('data-lurah.csv',st.tables.lurah||[]); exportCSV('data-kepling.csv',st.tables.kepling||[]); });
-
-    // === Edit Gating ===
-    const editStatus = $('editStatus'); const editorTools=$('editorTools'); const btnRequestEdit=$('btnRequestEdit'); const btnEnterCode=$('btnEnterCode'); const btnExitEdit=$('btnExitEdit'); const btnAdmin=$('btnAdmin');
-    const modal=$('modal'); const modalTitle=$('modalTitle'); const modalBody=$('modalBody'); const modalOk=$('modalOk');
-    function setEditEnabled(v){ st.edit.enabled=v; saveState(); editStatus.innerHTML='Mode: <strong>'+(v?'Editor':'Baca')+'</strong>'; editorTools.classList.toggle('hidden',!v); btnExitEdit.classList.toggle('hidden',!v); btnEnterCode.classList.toggle('hidden',v); btnRequestEdit.classList.toggle('hidden',v); toggleContentEditable(getActiveTBody(), v); renderKegiatan(); }
-    setEditEnabled(!!st.edit.enabled);
-    btnRequestEdit.addEventListener('click', ()=>{ const mail=st.settings.adminEmail||''; modalTitle.textContent='Minta Izin Edit'; modalBody.innerHTML=`<label class="grid gap-1"><span>Nama</span><input id="reqNama" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800"></label><label class="grid gap-1"><span>OPD/Unit</span><input id="reqUnit" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800"></label><label class="grid gap-1"><span>Kontak/Email</span><input id="reqKontak" class="px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800"></label><p class="text-xs text-zinc-500 mt-2">Permohonan akan dibuat sebagai draf email ke admin.</p>`; modal.showModal(); modalOk.onclick=(e)=>{e.preventDefault(); const nama=$('reqNama').value.trim(),unit=$('reqUnit').value.trim(),kontak=$('reqKontak').value.trim(); const subject=encodeURIComponent('[SiDali] Permohonan Izin Edit'); const body=encodeURIComponent(`Yth. Admin,\n\nSaya (${nama}) dari ${unit} mengajukan izin untuk mengedit data SiDali Tapsel.\nKontak: ${kontak}\n\nTerima kasih.`); const href=mail?`mailto:${mail}?subject=${subject}&body=${body}`:`mailto:?subject=${subject}&body=${body}`; window.location.href=href; modal.close(); }; });
-    btnEnterCode.addEventListener('click', ()=>{ modalTitle.textContent='Masukkan Kode Akses Editor'; modalBody.innerHTML=`<input id="inCode" placeholder="Kode dari Admin" class="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800"/>`; modal.showModal(); modalOk.onclick=(e)=>{e.preventDefault(); const code=$('inCode').value.trim(); if(!code) return; if(st.edit.code && code!==st.edit.code){ alert('Kode salah.'); return; } st.edit.knownCode=code; setEditEnabled(true); modal.close(); }; });
-    btnExitEdit.addEventListener('click', ()=> setEditEnabled(false));
-    btnAdmin.addEventListener('click', ()=>{ modalTitle.textContent='Panel Admin'; modalBody.innerHTML=`<p class="text-sm">Setel/ubah <strong>Kode Akses Editor</strong>.</p><input id="adminSetCode" placeholder="Kode baru" class="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 mt-2" value="${st.edit.code||''}"><p class="text-xs text-zinc-500 mt-2">Untuk kontrol penuh & log, gunakan Apps Script/Web App.</p>`; modal.showModal(); modalOk.onclick=(e)=>{e.preventDefault(); st.edit.code=$('adminSetCode').value.trim(); saveState(); alert('Kode editor diperbarui.'); if(st.edit.enabled) setEditEnabled(true); modal.close(); }; });
-
-    // === Kegiatan Upload & List ===
-    const kgKecamatan=$('kgKecamatan'); const kgFilterKec=$('kgFilterKec'); const kgFilterStatus=$('kgFilterStatus'); const kgList=$('kgList');
-    kgKecamatan.innerHTML = kecamatanLabels.map(k=>`<option value="${k}">${k}</option>`).join('');
-    kgFilterKec.innerHTML = `<option value="">Semua Kecamatan</option>` + kecamatanLabels.map(k=>`<option value="${k}">${k}</option>`).join('');
-
-    function badge(status){ return status==='approved' ? '<span class="badge bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200">Disetujui</span>' : status==='rejected' ? '<span class="badge bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-200">Ditolak</span>' : '<span class="badge bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">Menunggu</span>'; }
-
-    function renderKegiatan(){
-      const fk = kgFilterKec.value, fs = kgFilterStatus.value;
-      const rows = st.kegiatan.filter(x => (!fk || x.kecamatan===fk) && (!fs || x.status===fs));
-      kgList.innerHTML = rows.map(x => `
-        <div class="p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800">
-          <div class="flex items-center justify-between gap-2">
-            <div>
-              <div class="text-sm font-semibold">${x.nama}</div>
-              <div class="text-xs text-zinc-500">${x.tanggal} • ${x.kecamatan}</div>
-            </div>
-            <div>${badge(x.status)}</div>
-          </div>
-          ${x.deskripsi ? `<p class="mt-2 text-sm">${x.deskripsi}</p>` : ''}
-          ${x.files?.length ? `<div class="mt-2 flex flex-wrap gap-2 text-sm">` + x.files.map(f=>`<a href="${f.url}" target="_blank" class="px-2 py-1 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800/60">${f.name}</a>`).join('') + `</div>` : ''}
-          ${st.edit.enabled ? `
-          <div class="mt-3 flex items-center gap-2">
-            <button data-act="approve" data-id="${x.id}" class="px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700">Setujui</button>
-            <button data-act="reject" data-id="${x.id}" class="px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700">Tolak</button>
-            <button data-act="delete" data-id="${x.id}" class="px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700">Hapus</button>
-          </div>` : ''}
-        </div>
-      `).join('') || '<p class="text-sm text-zinc-500">Belum ada kegiatan.</p>';
-    }
-    kgFilterKec.addEventListener('change', renderKegiatan); kgFilterStatus.addEventListener('change', renderKegiatan);
-
-    $('kgSubmit').addEventListener('click', async ()=>{
-      const nama=$('kgNama').value.trim(), tgl=$('kgTanggal').value, kec=$('kgKecamatan').value, desk=$('kgDeskripsi').value.trim();
-      const filesInput=$('kgFiles'); if(!nama||!tgl||!kec){ alert('Nama kegiatan, tanggal, dan kecamatan wajib diisi.'); return; }
-      const item={ id: 'kg_'+Date.now(), nama, tanggal: tgl, kecamatan: kec, deskripsi: desk, files: [], status:'pending', createdAt: new Date().toISOString() };
-      if (st.settings.uploadEndpoint){
-        try{
-          const fd = new FormData();
-          fd.append('action','submit');
-          fd.append('id', item.id);
-          fd.append('nama', nama); fd.append('tanggal', tgl); fd.append('kecamatan', kec); fd.append('deskripsi', desk);
-          for(const f of filesInput.files){ fd.append('files[]', f, f.name); }
-          const res = await fetch(st.settings.uploadEndpoint, { method:'POST', body: fd });
-          const js = await res.json();
-          if (!res.ok || !js.ok) throw new Error(js.error||'Gagal submit ke server');
-          item.files = js.files || []; // uses drive URLs
-          item.status = js.status || 'pending';
-        }catch(e){ alert('Gagal kirim ke endpoint: '+e.message+' — tetap disimpan lokal sebagai draf.'); }
-      }else{
-        // Local-only fallback (object URLs)
-        for(const file of filesInput.files){
-          const url=URL.createObjectURL(file);
-          item.files.push({name:file.name, url, type:file.type, size:file.size});
-        }
-      }
-      st.kegiatan.unshift(item); saveState(); renderKegiatan();
-      $('kgNama').value=''; $('kgTanggal').value=''; $('kgDeskripsi').value=''; filesInput.value='';
-      alert('Kegiatan dikirim. Menunggu persetujuan admin.');
+    if(chartSebaran) chartSebaran.destroy();
+    chartSebaran = new Chart(ctx1, {
+      type:'bar', data:{ labels, datasets:[{ label:'Jumlah Kel/Desa', data: values }] },
+      options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } }
     });
 
-    document.addEventListener('click', async (e)=>{
-      const btn = e.target.closest('button[data-act]'); if(!btn) return;
-      const id = btn.getAttribute('data-id'); const act = btn.getAttribute('data-act');
-      const item = st.kegiatan.find(k=>k.id===id); if(!item) return;
-      if (act==='delete'){ st.kegiatan = st.kegiatan.filter(k=>k.id!==id); saveState(); return renderKegiatan(); }
-      const newStatus = act==='approve' ? 'approved' : 'rejected';
-      if (st.settings.uploadEndpoint && st.settings.adminToken){
-        try{
-          const fd = new FormData(); fd.append('action','setStatus'); fd.append('id', id); fd.append('status', newStatus); fd.append('token', st.settings.adminToken);
-          const res = await fetch(st.settings.uploadEndpoint, { method:'POST', body: fd });
-          const js = await res.json(); if (!res.ok || !js.ok) throw new Error(js.error||'Gagal set status di server');
-        }catch(e){ alert('Gagal set status di server: '+e.message+' — status hanya berubah lokal.'); }
-      }
-      item.status = newStatus; saveState(); renderKegiatan();
+    const kel = (data.lurah.length>1? data.lurah.length-1: 0);
+    const lk  = (data.kepling.length>1? data.kepling.length-1: 0);
+    if(chartKomposisi) chartKomposisi.destroy();
+    chartKomposisi = new Chart(ctx2, {
+      type:'doughnut', data:{ labels:['Kel/Desa','Lingkungan/Dusun'], datasets:[{ data:[kel, lk] }] },
+      options:{ responsive:true, maintainAspectRatio:false }
     });
+  }
 
-    renderKegiatan();
+  function filterRows(rows, q){
+    if(!q) return rows; q=q.toLowerCase();
+    const [head, ...body] = rows; const idx = new Set(head.map((_,i)=>i));
+    const out = body.filter(r=> r.some((c,i)=> idx.has(i) && String(c).toLowerCase().includes(q)));
+    return [head, ...out];
+  }
 
-    // === Command palette ===
-    const search=$('search'); window.addEventListener('keydown',(e)=>{ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){ e.preventDefault(); search?.focus(); } });
-  </script>
+  async function loadAll(){
+    try{
+      document.getElementById('skelCamat').style.display='block';
+      document.getElementById('skelLurah').style.display='block';
+      document.getElementById('skelKepling').style.display='block';
+      const data = await getSheetData();
+
+      // Tabel
+      buildTable(document.getElementById('tblCamat'), data.camat);
+      buildTable(document.getElementById('tblLurah'), data.lurah);
+      buildTable(document.getElementById('tblKepling'), data.kepling);
+      document.getElementById('countCamat').textContent = `${Math.max(0, data.camat.length-1)} data`;
+      document.getElementById('countLurah').textContent = `${Math.max(0, data.lurah.length-1)} data`;
+      document.getElementById('countKepling').textContent = `${Math.max(0, data.kepling.length-1)} data`;
+
+      // Charts & stats
+      updateStats(data); renderCharts(data); setUpdated();
+
+      // Dropdown kecamatan (grafik detail)
+      const byKec = countByKecamatan(data.lurah).map(x=>x[0]);
+      const sel = document.getElementById('selectKecamatan');
+      sel.innerHTML = '<option value="">Semua kecamatan</option>' + byKec.map(k=>`<option>${escapeHtml(k)}</option>`).join('');
+
+      // Hide skeleton
+      document.getElementById('skelCamat').style.display='none';
+      document.getElementById('skelLurah').style.display='none';
+      document.getElementById('skelKepling').style.display='none';
+
+      toast('Data termuat', true);
+    }catch(err){ console.error(err); toast('Gagal memuat data – periksa publikasi CSV/GID', false); }
+  }
+
+  // Pencarian Data tab
+  document.getElementById('searchData').addEventListener('input', debounce(async (e)=>{
+    try{
+      const q = e.target.value.trim();
+      const data = await getSheetData();
+      buildTable(document.getElementById('tblCamat'), filterRows(data.camat, q));
+      buildTable(document.getElementById('tblLurah'), filterRows(data.lurah, q));
+      buildTable(document.getElementById('tblKepling'), filterRows(data.kepling, q));
+    }catch(err){ /* ignore */ }
+  }, 300));
+
+  // Ekspor CSV dari tab aktif (Lurah sebagai contoh)
+  document.getElementById('btn-export-csv').onclick = async()=>{
+    try{
+      const { lurah } = await getSheetData();
+      const csv = lurah.map(r=> r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'data_lurah.csv'; a.click();
+    }catch(err){ toast('Gagal ekspor CSV', false); }
+  }
+
+  // Grafik detail: sebagai contoh, re-render dengan data dummy by kecamatan
+  document.getElementById('btn-refresh-chart').onclick = async()=>{
+    try{
+      const { lurah } = await getSheetData();
+      const sel = document.getElementById('selectKecamatan').value;
+      const head = lurah[0]; const idxKec = head.findIndex(h=>/kecamatan/i.test(h));
+      const list = (sel? lurah.filter((r,i)=> i>0 && r[idxKec]===sel): lurah.slice(1)).slice(0,12);
+      const labels = list.map((r,i)=> r[1] || ('Entitas '+(i+1)));
+      const values = list.map(()=> 1); // placeholder: 1 per baris
+      if(chartDetail) chartDetail.destroy();
+      chartDetail = new Chart(document.getElementById('chartDetail'), {
+        type:'bar', data:{ labels, datasets:[{ label:'Entri', data: values }] }, options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } }
+      });
+    }catch(err){ toast('Gagal memuat grafik', false); }
+  }
+
+  // Kegiatan – Upload (via Apps Script)
+  document.getElementById('btnUpload').onclick = async()=>{
+    try{
+      if(!CONFIG.endpoint){ toast('Endpoint belum diatur', false); return; }
+      const nama = document.getElementById('fNama').value.trim();
+      const tanggal = document.getElementById('fTanggal').value; const kec = document.getElementById('fKec').value.trim();
+      const desk = document.getElementById('fDesk').value.trim(); const files = document.getElementById('fFiles').files;
+      if(!nama || !tanggal || !kec || !desk){ toast('Lengkapi form', false); return; }
+      if(files.length>10){ toast('Maks 10 file', false); return; }
+      for(const f of files){ if(f.size>10*1024*1024){ toast('Maks 10MB per file', false); return; } }
+
+      const fd = new FormData();
+      fd.append('action','upload'); fd.append('nama',nama); fd.append('tanggal',tanggal); fd.append('kecamatan',kec); fd.append('deskripsi',desk);
+      for(const f of files) fd.append('files', f, f.name);
+
+      const res = await fetch(CONFIG.endpoint, { method:'POST', body: fd });
+      if(!res.ok) throw new Error('Gagal kirim');
+      const j = await res.json();
+      toast(j.message || 'Berhasil dikirim', true);
+      document.getElementById('fNama').value=''; document.getElementById('fTanggal').value=''; document.getElementById('fKec').value='';
+      document.getElementById('fDesk').value=''; document.getElementById('fFiles').value='';
+    }catch(err){ console.error(err); toast('Upload gagal', false); }
+  }
+
+  // Muat kegiatan terbaru (read-only)
+  document.getElementById('btnReloadKeg').onclick = async()=>{
+    try{
+      if(!CONFIG.endpoint){ toast('Endpoint belum diatur', false); return; }
+      const res = await fetch(CONFIG.endpoint + '?action=listKegiatan');
+      const j = await res.json();
+      const box = document.getElementById('listKegiatan');
+      if(!j || !j.data || !j.data.length){ box.textContent='Belum ada data.'; return; }
+      box.innerHTML = j.data.slice(0,10).map(x=>`<div class="mb12"><div><strong>${escapeHtml(x.kecamatan)}</strong> <span class="badge ${x.status==='Disetujui'?'ok':x.status==='Ditolak'?'no':'wait'}">${escapeHtml(x.status)}</span></div><div class="muted">${escapeHtml(x.tanggal)} • ${escapeHtml(x.nama)}</div><div>${escapeHtml(x.deskripsi)}</div></div>`).join('');
+    }catch(err){ toast('Gagal memuat kegiatan', false); }
+  }
+
+  // Pengumuman (read-only, bisa ambil dari sheet khusus)
+  document.getElementById('btnReloadPeng').onclick = async()=>{
+    try{
+      // Contoh: ambil dari Apps Script action=listPengumuman
+      if(!CONFIG.endpoint){ toast('Endpoint belum diatur', false); return; }
+      const res = await fetch(CONFIG.endpoint + '?action=listPengumuman');
+      const j = await res.json();
+      const box = document.getElementById('listPengumuman');
+      if(!j || !j.data || !j.data.length){ box.textContent='Belum ada pengumuman.'; return; }
+      box.innerHTML = j.data.map(p=>`<div class="card mb12"><div class="section-title"><strong>${escapeHtml(p.judul)}</strong><span class="muted">${escapeHtml(p.tanggal)}</span></div><div>${escapeHtml(p.isi)}</div></div>`).join('');
+    }catch(err){ toast('Gagal memuat pengumuman', false); }
+  }
+
+  // Helpers
+  function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn.apply(this,a), ms) } }
+
+  // Auto-init
+  loadAll();
+</script>
 </body>
 </html>
