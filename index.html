@@ -136,296 +136,68 @@
   </aside>
 
   <main>
-<!-- ========== RINGKASAN: Kabupaten Tapanuli Selatan (static) ========== -->
-<section id="tab-ringkasan" class="card">
-  <div class="section-title">
-    <h2>Kabupaten Tapanuli Selatan</h2>
-    <div class="badge">Data per: 30 Juni 2024</div>
-  </div>
-
-  <!-- Kartu angka cepat -->
-  <div class="stats mb16" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
-    <div class="stat" style="padding:14px;border:1px solid #253028;border-radius:14px;background:#131a15">
-      <div class="label" style="color:#7a8a7f;font-size:12px">Luas Wilayah</div>
-      <div class="value" style="font:700 28px/1 Inter,system-ui">6.030,47 km²</div>
-    </div>
-    <div class="stat" style="padding:14px;border:1px solid #253028;border-radius:14px;background:#131a15">
-      <div class="label" style="color:#7a8a7f;font-size:12px">Penduduk</div>
-      <div class="value" style="font:700 28px/1 Inter,system-ui">322.377 jiwa</div>
-    </div>
-    <div class="stat" style="padding:14px;border:1px solid #253028;border-radius:14px;background:#131a15">
-      <div class="label" style="color:#7a8a7f;font-size:12px">Ibu Kota</div>
-      <div class="value" style="font:700 28px/1 Inter,system-ui">Sipirok</div>
-    </div>
-  </div>
-
-  <!-- Dua kolom: narasi singkat & fakta kunci -->
-  <div class="grid" style="display:grid;grid-template-columns:repeat(12,1fr);gap:16px">
-    <div class="card" style="grid-column:span 7;border:1px solid #253028;border-radius:16px;padding:16px;background:#141a16">
-      <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <strong>Gambaran Singkat</strong><span class="muted" style="color:#7a8a7f">Provinsi Sumatera Utara</span>
-      </div>
-      <p class="muted" style="color:#cbd5ce;margin:0">
-        Kabupaten Tapanuli Selatan adalah kabupaten di Provinsi Sumatera Utara dengan ibu kota di <b>Sipirok</b>.
-        Setelah pemekaran wilayah (Mandailing Natal, Padang Lawas Utara, Padang Lawas, dan Kota Padangsidimpuan),
-        pusat pemerintahan berpindah dari Padangsidimpuan ke Sipirok. Motto daerah: <i>Sahata saoloan</i>
-        (Batak Angkola) yang bermakna “Seiya sekata”. Bahasa yang digunakan antara lain Indonesia (resmi)
-        dan Batak (Angkola, Mandailing, Toba).
-      </p>
-    </div>
-
-    <div class="card" style="grid-column:span 5;border:1px solid #253028;border-radius:16px;padding:16px;background:#141a16">
-      <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <strong>Fakta Kunci</strong><span class="muted" style="color:#7a8a7f">Sumber: Wikipedia</span>
-      </div>
-      <ul style="margin:0;padding-left:18px;line-height:1.6">
-        <li><b>Kecamatan</b>: 15</li>
-        <li><b>Kelurahan</b>: 36 • <b>Desa</b>: 212</li>
-        <li><b>Kepadatan</b>: ±53 jiwa/km² (2024)</li>
-        <li><b>Zona waktu</b>: WIB (UTC+7)</li>
-        <li><b>Kendaraan</b>: BB</li>
-        <li><b>Situs resmi</b>: <a href="https://tapselkab.go.id" target="_blank" rel="noopener">tapselkab.go.id</a></li>
-      </ul>
-    </div>
-  </div>
-</section>
-<!-- ========== /RINGKASAN ========== -->
-
-  <!-- ==================== TAB: GRAFIK (Versi Lengkap) ==================== -->
 <section id="tab-grafik" class="card" hidden>
   <div class="section-title">
-    <h2>Grafik Informasi – Kabupaten Tapanuli Selatan</h2>
-    <div class="toolbar right">
-      <select id="selectTahun"></select>
-      <button class="btn" id="btn-refresh-chart">Muat Ulang</button>
-    </div>
+    <h2>Grafik Jumlah Penduduk Tapanuli Selatan</h2>
   </div>
 
   <div class="muted" style="margin-bottom:10px">
-    Sumber utama: Badan Pusat Statistik (BPS) Kab. Tapanuli Selatan (Subjek Kependudukan).
+    Sumber: Badan Pusat Statistik (BPS) Kab. Tapanuli Selatan.
   </div>
 
-  <!-- GRID 2 kolom: Tren & Komposisi -->
-  <div class="grid" style="display:grid;grid-template-columns:repeat(12,1fr);gap:16px">
-    <!-- Tren jumlah penduduk -->
-    <div class="card" style="grid-column:span 7;border:1px solid var(--line);border-radius:16px;padding:16px;background:#141a16">
-      <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <strong>Tren Jumlah Penduduk</strong>
-        <span class="muted">jiwa</span>
-      </div>
-      <canvas id="chartTrend" height="280"></canvas>
-    </div>
-
-    <!-- Komposisi jenis kelamin -->
-    <div class="card" style="grid-column:span 5;border:1px solid var(--line);border-radius:16px;padding:16px;background:#141a16">
-      <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <strong>Komposisi Penduduk menurut Jenis Kelamin</strong>
-        <span class="muted" id="labelGenderYear">—</span>
-      </div>
-      <canvas id="chartGender" height="280"></canvas>
-      <div class="muted" id="noteGender" style="margin-top:8px;font-size:12px"></div>
-    </div>
-
-    <!-- Laju pertumbuhan (% YoY) -->
-    <div class="card" style="grid-column:span 12;border:1px solid var(--line);border-radius:16px;padding:16px;background:#141a16">
-      <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <strong>Laju Pertumbuhan Penduduk (YoY)</strong>
-        <span class="muted">persen</span>
-      </div>
-      <canvas id="chartGrowth" height="260"></canvas>
-    </div>
-  </div>
-
-  <!-- Tabel referensi angka yang sedang dipakai -->
-  <div class="card" style="margin-top:16px;border:1px solid var(--line);border-radius:16px;padding:16px;background:#141a16">
-    <strong>Data Ringkas</strong>
-    <table id="tblPenduduk" style="width:100%;border-collapse:collapse;margin-top:8px">
-      <thead>
-        <tr>
-          <th style="text-align:left;border-bottom:1px solid var(--line);padding:8px">Tahun</th>
-          <th style="text-align:left;border-bottom:1px solid var(--line);padding:8px">Jumlah (jiwa)</th>
-          <th style="text-align:left;border-bottom:1px solid var(--line);padding:8px">Laki-laki (jiwa)</th>
-          <th style="text-align:left;border-bottom:1px solid var(--line);padding:8px">Perempuan (jiwa)</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-    <div class="muted" style="margin-top:8px;font-size:12px">
-      *Isi/ubah angka pada variabel <code>DATA_TREND</code> dan <code>DATA_GENDER</code> di skrip di bawah.
-    </div>
-  </div>
+  <canvas id="chartPenduduk" height="360"></canvas>
 </section>
 
-<!-- ==================== Skrip grafik tapsel (tempel sebelum </body>) ==================== -->
+<!-- Tempel skrip ini sebelum </body> -->
 <script>
-/* =======================================================================
-   1) DATA – Isi sesuai tabel BPS (Subjek Kependudukan)
-   -----------------------------------------------------------------------
-   - DATA_TREND : jumlah penduduk total per tahun (jiwa)
-   - DATA_GENDER: komposisi laki-laki & perempuan per tahun (jika ada)
-   Catatan: 2024 = 322.377 jiwa (sesuai publikasi terbaru).
-   Tambahkan baris tahun lain mengikuti format array di bawah.
-======================================================================= */
-
-// Jumlah penduduk total per tahun (jiwa)
-const DATA_TREND = [
-  // Contoh pengisian (isi dari BPS):
-  // { tahun: 2020, jumlah: 314800 },
-  // { tahun: 2021, jumlah: 316200 },
-  // { tahun: 2022, jumlah: 317500 },
-  // { tahun: 2023, jumlah: 319000 },
-  { tahun: 2024, jumlah: 322377 }
+/* ====== DATA BPS (isi/ubah di sini) ======
+   Tambahkan baris sesuai tabel BPS:
+   { tahun: 2023, jumlah: 319000 }, dst. */
+const DATA_BPS = [
+  { tahun: 2024, jumlah: 322377 },
+  { tahun: 2023, jumlah: 319000 },
+{ tahun: 2022, jumlah: 317500 }
 ];
 
-// Komposisi menurut jenis kelamin (jiwa) – opsional
-const DATA_GENDER = [
-  // Isi jika tersedia di BPS untuk tahun tertentu:
-  // { tahun: 2024, laki: 161200, perempuan: 161177 }
-];
-
-/* =======================================================================
-   2) UTIL
-======================================================================= */
+let chartPenduduk = null;
 function formatNumber(n){ return new Intl.NumberFormat('id-ID').format(n); }
-function byYear(arr){ return Object.fromEntries(arr.map(d => [d.tahun, d])); }
-function computeGrowth(dataTrend) {
-  // hitung pertumbuhan % YoY dari seri jumlah
-  const s = [...dataTrend].sort((a,b)=>a.tahun-b.tahun);
-  const out = [];
-  for (let i=1; i<s.length; i++){
-    const prev = s[i-1].jumlah, curr = s[i].jumlah;
-    if (prev > 0) out.push({ tahun: s[i].tahun, growth: ((curr - prev) / prev) * 100 });
-  }
-  return out;
-}
 
-/* =======================================================================
-   3) RENDER CHARTS
-======================================================================= */
-let chartTrend, chartGender, chartGrowth;
+function renderGrafikPenduduk(){
+  const dataSorted = [...DATA_BPS].sort((a,b)=> a.tahun - b.tahun);
+  const labels = dataSorted.map(d => String(d.tahun));
+  const values = dataSorted.map(d => d.jumlah);
 
-function renderTrend(){
-  const s = [...DATA_TREND].sort((a,b)=>a.tahun-b.tahun);
-  const labels = s.map(d=> String(d.tahun));
-  const values = s.map(d=> d.jumlah);
-  const ctx = document.getElementById('chartTrend'); if(!ctx) return;
+  const ctx = document.getElementById('chartPenduduk');
+  if(!ctx) return;
 
-  if(chartTrend) chartTrend.destroy();
-  chartTrend = new Chart(ctx, {
+  if(chartPenduduk) chartPenduduk.destroy();
+  chartPenduduk = new Chart(ctx, {
     type: 'line',
-    data: { labels, datasets: [{ label:'Jumlah Penduduk (jiwa)', data: values, tension:.25, pointRadius:4 }] },
+    data: {
+      labels,
+      datasets: [{
+        label: 'Jumlah Penduduk (jiwa)',
+        data: values,
+        tension: 0.25,
+        pointRadius: 4
+      }]
+    },
     options: {
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ tooltip:{ callbacks:{ label:c=>' '+formatNumber(c.parsed.y)+' jiwa' } } },
-      scales:{ y:{ ticks:{ callback:v=>formatNumber(v) } } }
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        tooltip: { callbacks: { label: c => ' ' + formatNumber(c.parsed.y) + ' jiwa' } },
+        legend: { display: true }
+      },
+      scales: {
+        y: { ticks: { callback: v => formatNumber(v) } }
+      }
     }
   });
 }
 
-function renderGender(year=null){
-  const map = byYear(DATA_GENDER);
-  const y = year ?? (DATA_GENDER[0]?.tahun ?? null);
-  const row = y ? map[y] : null;
-  const ctx = document.getElementById('chartGender'); if(!ctx) return;
-
-  const labelYear = document.getElementById('labelGenderYear');
-  const note = document.getElementById('noteGender');
-
-  if(!row){
-    if(chartGender) chartGender.destroy();
-    chartGender = new Chart(ctx, { type:'doughnut', data:{ labels:['Laki-laki','Perempuan'], datasets:[{ data:[0,0] }] } });
-    if(labelYear) labelYear.textContent = '—';
-    if(note) note.textContent = 'Belum ada data komposisi gender. Isi variabel DATA_GENDER untuk menampilkan chart ini.';
-    return;
-  }
-
-  if(chartGender) chartGender.destroy();
-  chartGender = new Chart(ctx, {
-    type:'doughnut',
-    data:{ labels:['Laki-laki','Perempuan'], datasets:[{ data:[row.laki, row.perempuan] }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{ tooltip:{ callbacks:{ label:c=>' '+formatNumber(c.parsed)+' jiwa' } } } }
-  });
-
-  if(labelYear) labelYear.textContent = 'Tahun '+ y;
-  if(note) note.textContent = 'Total: ' + formatNumber((row.laki||0) + (row.perempuan||0)) + ' jiwa';
-}
-
-function renderGrowth(){
-  const g = computeGrowth(DATA_TREND);
-  const labels = g.map(d=> String(d.tahun));
-  const values = g.map(d=> d.growth);
-  const ctx = document.getElementById('chartGrowth'); if(!ctx) return;
-
-  if(chartGrowth) chartGrowth.destroy();
-  chartGrowth = new Chart(ctx, {
-    type:'bar',
-    data:{ labels, datasets:[{ label:'Pertumbuhan YoY (%)', data: values }] },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ tooltip:{ callbacks:{ label:c=>' '+c.parsed.y.toFixed(2)+' %' } } },
-      scales:{ y:{ ticks:{ callback:v=> v.toFixed(1)+' %' } } }
-    }
-  });
-}
-
-/* =======================================================================
-   4) TABEL & DROPDOWN
-======================================================================= */
-function populateTable(){
-  const tb = document.querySelector('#tblPenduduk tbody'); if(!tb) return;
-  const mapG = byYear(DATA_GENDER);
-  const rows = [...DATA_TREND].sort((a,b)=>a.tahun-b.tahun).map(d=>{
-    const g = mapG[d.tahun] || {};
-    return `<tr>
-      <td style="padding:8px;border-bottom:1px solid var(--line)">${d.tahun}</td>
-      <td style="padding:8px;border-bottom:1px solid var(--line)">${formatNumber(d.jumlah)}</td>
-      <td style="padding:8px;border-bottom:1px solid var(--line)">${g.laki!=null?formatNumber(g.laki):'—'}</td>
-      <td style="padding:8px;border-bottom:1px solid var(--line)">${g.perempuan!=null?formatNumber(g.perempuan):'—'}</td>
-    </tr>`;
-  }).join('');
-  tb.innerHTML = rows || `<tr><td colspan="4" style="padding:8px" class="muted">Belum ada data.</td></tr>`;
-}
-
-function populateDropdown(){
-  const sel = document.getElementById('selectTahun'); if(!sel) return;
-  const years = [...new Set(DATA_TREND.map(d=>d.tahun))].sort((a,b)=>a-b);
-  sel.innerHTML = '<option value="">Semua tahun</option>' + years.map(t=> `<option value="${t}">${t}</option>`).join('');
-}
-
-/* =======================================================================
-   5) INIT
-======================================================================= */
-function initGrafikTapsel(){
-  populateDropdown();
-  populateTable();
-  renderTrend();
-  renderGender();   // pakai tahun pertama di DATA_GENDER jika ada
-  renderGrowth();
-
-  const sel = document.getElementById('selectTahun');
-  if (sel){
-    sel.addEventListener('change', ()=>{
-      const val = sel.value ? Number(sel.value) : null;
-      // Tren selalu semua tahun; gender bisa diarahkan ke pilihan tahun
-      renderGender(val);
-      // Tombol Muat Ulang akan merender ulang semua
-    });
-  }
-  const btn = document.getElementById('btn-refresh-chart');
-  if (btn) btn.addEventListener('click', ()=>{
-    populateTable();
-    renderTrend();
-    // Render gender berdasarkan pilihan dropdown saat ini
-    const v = (document.getElementById('selectTahun')||{}).value;
-    renderGender(v?Number(v):null);
-    renderGrowth();
-  });
-}
-
-document.addEventListener('DOMContentLoaded', initGrafikTapsel);
+document.addEventListener('DOMContentLoaded', renderGrafikPenduduk);
 </script>
-<!-- ==================== /TAB: GRAFIK (Versi Lengkap) ==================== -->
-
     <!-- TAB: DATA -->
     <section id="tab-data" class="card" hidden>
       <div class="section-title">
