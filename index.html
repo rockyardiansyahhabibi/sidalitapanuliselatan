@@ -107,6 +107,28 @@
 
     /* Responsive */
     @media (max-width: 1024px){ .shell{ grid-template-columns: 1fr } aside{ position:static; height:auto } }
+    /* Grafik fit to desktop */
+.chart-wrap{
+  position: relative;
+  width: 100%;
+  /* Tinggi adaptif: min 420px, ideal 55vh, maks 700px */
+  height: clamp(420px, 55vh, 700px);
+}
+
+/* Bikin center & batasi lebar maksimum di layar lebar */
+@media (min-width: 1280px){
+  .chart-wrap{
+    max-width: 1100px;
+    margin-inline: auto;
+  }
+}
+
+/* Pastikan canvas ikut lebar parent */
+.chart-wrap canvas{
+  width: 100% !important;
+  height: 100% !important; /* Chart.js akan isi sesuai height parent */
+  display: block;
+}
   </style>
 </head>
 <body>
@@ -198,7 +220,8 @@
     Sumber: Badan Pusat Statistik (BPS) Kab. Tapanuli Selatan.
   </div>
 
-  <<canvas id="chartPenduduk"></canvas>
+  <div class="chart-wrap">
+  <canvas id="chartPenduduk"></canvas>
 </div>
 </section>
 
@@ -224,31 +247,21 @@ function renderGrafikPenduduk(){
   const ctx = document.getElementById('chartPenduduk');
   if(!ctx) return;
 
-  if(chartPenduduk) chartPenduduk.destroy();
-  chartPenduduk = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels,
-      datasets: [{
-        label: 'Jumlah Penduduk (jiwa)',
-        data: values,
-        tension: 0.25,
-        pointRadius: 4
-      }]
+ if(chartPenduduk) chartPenduduk.destroy();
+chartPenduduk = new Chart(document.getElementById('chartPenduduk'), {
+  type: 'line',
+  data: { /* ... */ },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false, // penting agar pakai tinggi dari .chart-wrap
+    plugins: {
+      tooltip: { callbacks: { label: c => ' ' + new Intl.NumberFormat('id-ID').format(c.parsed.y) + ' jiwa' } }
     },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        tooltip: { callbacks: { label: c => ' ' + formatNumber(c.parsed.y) + ' jiwa' } },
-        legend: { display: true }
-      },
-      scales: {
-        y: { ticks: { callback: v => formatNumber(v) } }
-      }
+    scales: {
+      y: { ticks: { callback: v => new Intl.NumberFormat('id-ID').format(v) } }
     }
-  });
-}
+  }
+});
 
 document.addEventListener('DOMContentLoaded', renderGrafikPenduduk);
 </script>
