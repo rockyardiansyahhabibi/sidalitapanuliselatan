@@ -276,6 +276,263 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 <!-- ===== /RINGKASAN ===== -->
+<!-- ========== DATA WILAYAH – siap tempel ke index.html ========== -->
+
+<style>
+  /* ===== Tabel rapi & responsif ===== */
+  .table-wrap{
+    overflow:auto;
+    max-height:72vh;
+    border:1px solid #253028;
+    border-radius:12px;
+    background:#141a16;
+  }
+  table{ width:100%; border-collapse:collapse; table-layout:fixed; font-size:14px }
+  thead th{
+    position:sticky; top:0; z-index:1;
+    text-align:left; color:#7a8a7f; font-weight:600;
+    padding:10px; background:#141a16; border-bottom:1px solid #253028;
+  }
+  tbody td{
+    border-bottom:1px solid #253028; padding:10px; vertical-align:top;
+    overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+  }
+  td.wrap{ white-space:normal; word-break:break-word }
+  .toolbar{ display:flex; gap:8px; flex-wrap:wrap }
+  .input{ background:#0f1411; border:1px solid #253028; color:#eef3ee; border-radius:10px; padding:9px 10px }
+  .btn{ border:1px solid #253028; background:#141a16; color:#eef3ee; padding:9px 12px; border-radius:10px; cursor:pointer }
+  .btn:hover{ transform:translateY(-1px) }
+  .muted{ color:#7a8a7f }
+  .section-title{ display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:10px }
+</style>
+
+<section id="tab-data" class="card">
+  <div class="section-title">
+    <h2>Data Wilayah</h2>
+    <div class="toolbar right">
+      <input class="input" id="searchData" placeholder="Cari nama/kecamatan/kelurahan…">
+    </div>
+  </div>
+
+  <div class="muted mb12">Sumber: Data Camat, Data Lurah/Desa, Data Lingkungan/Dusun</div>
+
+  <!-- CAMAT -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-title">
+      <strong>Data Camat</strong>
+      <div class="toolbar">
+        <span class="muted" id="countCamat">– data</span>
+        <button class="btn" id="btnCsvCamat">Unduh CSV</button>
+      </div>
+    </div>
+    <div class="table-wrap"><table id="tblCamat"></table></div>
+  </div>
+
+  <!-- LURAH/DESA -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-title">
+      <strong>Data Lurah/Desa</strong>
+      <div class="toolbar">
+        <span class="muted" id="countLurah">– data</span>
+        <button class="btn" id="btnCsvLurah">Unduh CSV</button>
+      </div>
+    </div>
+    <div class="table-wrap"><table id="tblLurah"></table></div>
+  </div>
+
+  <!-- KEPLING/LINGKUNGAN -->
+  <div class="card">
+    <div class="section-title">
+      <strong>Data Lingkungan/Dusun</strong>
+      <div class="toolbar">
+        <span class="muted" id="countKepling">– data</span>
+        <button class="btn" id="btnCsvKepling">Unduh CSV</button>
+      </div>
+    </div>
+    <div class="table-wrap"><table id="tblKepling"></table></div>
+  </div>
+</section>
+
+<script>
+/* ================== KONFIG ================== */
+const SHEET_ID = "1m3jITIs6dLgWQBrLwt-uKWHbGR8O88s1RNzmGQVwwJo";
+const GIDS = {
+  camat:   0,
+  lurah:   1047805166,
+  kepling: 1542422789
+};
+
+/* ================== UTIL ================== */
+function csvUrl(sheetId, gid){
+  return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&id=${sheetId}&gid=${gid}`;
+}
+
+/* Parser CSV ringan: dukung sel ber-quote dan koma di dalam sel */
+function parseCSV(text){
+  const rows = [];
+  let row = [], cell = "", i = 0, inQuotes = false;
+  while(i < text.length){
+    const c = text[i], n = text[i+1];
+    if(inQuotes){
+      if(c === '"' && n === '"'){ cell += '"'; i += 2; continue; }        // escaped quote
+      if(c === '"'){ inQuotes = false; i++; continue; }                    // end quote
+      cell += c; i++; continue;
+    }else{
+      if(c === '"'){ inQuotes = true; i++; continue; }                     // begin quote
+      if(c === ','){ row.push(cell); cell=""; i++; continue; }             // next cell
+      if(c === '\r' && n === '\n'){ row.push(cell); rows.push(row); row=[]; cell=""; i+=2; continue; }
+      if(c === '\n' || c === '\r'){ row.push(cell); rows.push(row); row=[]; cell=""; i++; continue; }
+      cell += c; i++; continue;
+    }
+  }
+  if(cell.length || row.length) { row.push(cell); rows.push(row); }
+  // buang baris kosong
+  return rows.filter(r => r.some(x => String(x).trim() !== ""));
+}
+
+function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>\"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+
+async function fetchCSV(url){
+  const res = await fetch(url, { cache:"no-store" });
+  if(!res.ok) throw new Error("Gagal memuat CSV: " + url);
+  const text = await res.text();
+  return parseCSV(text);
+}
+
+function applyColgroup(tableEl, widths){
+  const cols = tableEl.querySelectorAll('thead th').length;
+  const w = widths && widths.length === cols ? widths : Array.from({length: cols}, ()=> (100/cols)+'%');
+  let cg = tableEl.querySelector('colgroup');
+  if(!cg){ cg = document.createElement('colgroup'); tableEl.insertBefore(cg, tableEl.firstChild); }
+  cg.innerHTML = w.map(x=> `<col style="width:${x}">`).join('');
+}
+
+function markWrapByHeader(tableEl, patterns){
+  const headCells = Array.from(tableEl.querySelectorAll('thead th')).map(th => th.textContent.trim());
+  const wrapIdx = headCells.map((h,i)=> patterns.some(rx=>rx.test(h)) ? i : -1).filter(i=>i>=0);
+  const rows = tableEl.tBodies[0] ? Array.from(tableEl.tBodies[0].rows) : [];
+  rows.forEach(tr => wrapIdx.forEach(i => { const td = tr.cells[i]; if(td) td.classList.add('wrap'); }));
+}
+
+/* ================== RENDER ================== */
+function buildTable(el, rows){
+  if(!rows || !rows.length){
+    el.innerHTML = '<thead><tr><th>Data</th></tr></thead><tbody><tr><td class="muted">Tidak ada data</td></tr></tbody>';
+    return;
+  }
+  const [header, ...body] = rows;
+  const thead = '<thead><tr>' + header.map(h=>`<th>${escapeHtml(h)}</th>`).join('') + '</tr></thead>';
+  const tbody = '<tbody>' + body.map(r=>'<tr>'+ r.map(c=>`<td>${escapeHtml(c)}</td>`).join('') + '</tr>').join('') + '</tbody>';
+  el.innerHTML = thead + tbody;
+}
+
+/* Lebar kolom (silakan sesuaikan jika header berbeda urutan) */
+const WIDTHS = {
+  camat:   ["20%","18%","18%","22%","22%"],      // contoh: Nama | Kecamatan | NIP | Kontak | Alamat
+  lurah:   ["20%","18%","18%","18%","14%","12%"],// contoh: Kel/Desa | Kec | Nama | NIP | Kontak | Kode
+  kepling: ["24%","20%","18%","20%","18%"]       // contoh: Lingkungan | Kel/Desa | Kec | Nama | Kontak
+};
+
+/* ================== PIPELINE ================== */
+let RAW = { camat:[], lurah:[], kepling:[] };
+
+async function loadDataWilayah(){
+  const [camat, lurah, kepling] = await Promise.all([
+    fetchCSV(csvUrl(SHEET_ID, GIDS.camat)),
+    fetchCSV(csvUrl(SHEET_ID, GIDS.lurah)),
+    fetchCSV(csvUrl(SHEET_ID, GIDS.kepling))
+  ]);
+  RAW = { camat, lurah, kepling };
+
+  // Render tabel awal
+  renderAllTables(RAW);
+
+  // Hitung jumlah (minus header)
+  document.getElementById('countCamat').textContent   = `${Math.max(0, camat.length-1)} data`;
+  document.getElementById('countLurah').textContent   = `${Math.max(0, lurah.length-1)} data`;
+  document.getElementById('countKepling').textContent = `${Math.max(0, kepling.length-1)} data`;
+}
+
+function renderAllTables(source, q=""){
+  const cam   = q ? filterRows(source.camat, q)   : source.camat;
+  const lur   = q ? filterRows(source.lurah, q)   : source.lurah;
+  const kep   = q ? filterRows(source.kepling, q) : source.kepling;
+
+  const tC = document.getElementById('tblCamat');
+  const tL = document.getElementById('tblLurah');
+  const tK = document.getElementById('tblKepling');
+
+  buildTable(tC, cam); buildTable(tL, lur); buildTable(tK, kep);
+
+  // Terapkan lebar kolom dan kolom wrap (alamat/keterangan)
+  applyColgroup(tC, WIDTHS.camat);
+  applyColgroup(tL, WIDTHS.lurah);
+  applyColgroup(tK, WIDTHS.kepling);
+
+  markWrapByHeader(tC, [/alamat|keterangan/i]);
+  markWrapByHeader(tL, [/alamat|keterangan/i]);
+  markWrapByHeader(tK, [/alamat|keterangan/i]);
+}
+
+/* Pencarian */
+function filterRows(rows, q){
+  if(!rows || !rows.length || !q) return rows;
+  q = q.toLowerCase();
+  const [head, ...body] = rows;
+  const out = body.filter(r => r.some(c => String(c).toLowerCase().includes(q)));
+  return [head, ...out];
+}
+
+/* Ekspor CSV dari data yang sedang tampil */
+function toCSV(rows){
+  return rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+}
+function bindCsvButton(btnId, getter){
+  const btn = document.getElementById(btnId);
+  if(!btn) return;
+  btn.addEventListener('click', ()=>{
+    const rows = getter();
+    const csv = toCSV(rows);
+    const blob = new Blob([csv], {type:'text/csv'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = btnId.replace('btnCsv','').toLowerCase() + '.csv';
+    a.click();
+  });
+}
+
+/* ================== INIT ================== */
+document.addEventListener('DOMContentLoaded', async ()=>{
+  try{
+    await loadDataWilayah();
+  }catch(e){
+    console.error(e);
+    // fallback jika gagal
+    ['tblCamat','tblLurah','tblKepling'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.innerHTML = '<thead><tr><th>Data</th></tr></thead><tbody><tr><td class="muted">Gagal memuat – pastikan tiap Sheet sudah Publish to the web (CSV) & GID benar.</td></tr></tbody>';
+    });
+  }
+
+  // pencarian realtime
+  const inp = document.getElementById('searchData');
+  if(inp){
+    let t;
+    inp.addEventListener('input', ()=>{
+      clearTimeout(t);
+      t = setTimeout(()=>{
+        const q = inp.value.trim();
+        renderAllTables(RAW, q);
+      }, 250);
+    });
+  }
+
+  // tombol CSV (mengunduh hasil yang sedang difilter)
+  bindCsvButton('btnCsvCamat',   ()=> filterRows(RAW.camat,   document.getElementById('searchData').value.trim()));
+  bindCsvButton('btnCsvLurah',   ()=> filterRows(RAW.lurah,   document.getElementById('searchData').value.trim()));
+  bindCsvButton('btnCsvKepling', ()=> filterRows(RAW.kepling, document.getElementById('searchData').value.trim()));
+});
+</script>
+<!-- ========== /DATA WILAYAH ========== -->
 
 
     <!-- TAB: GRAFIK -->
