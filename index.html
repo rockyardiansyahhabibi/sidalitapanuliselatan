@@ -203,6 +203,103 @@
         </div>
       </div>
       <canvas id="chartDetail" height="340"></canvas>
+// ====== DATA DARI BPS: ISI/EDIT DI SINI ======
+// Tambahkan baris sesuai tabel BPS (tahun terbaru di bawah).
+// Format: { tahun: 2020, jumlah: 300123 }
+const DATA_BPS = [
+  { tahun: 2024, jumlah: 322377 }, // sumber BPS (total penduduk per 30 Juni 2024)
+  // Contoh cara menambah:
+//{ tahun: 2023, jumlah: 319000 },
+//{ tahun: 2022, jumlah: 317500 },
+];
+
+// ====== UTIL ======
+function formatNumber(id){ return new Intl.NumberFormat('id-ID').format(id); }
+
+let chartDetail; // pegang instance Chart.js
+
+function renderPendudukChart() {
+  // Urutkan berdasarkan tahun
+  const dataSorted = [...DATA_BPS].sort((a,b)=> a.tahun - b.tahun);
+  const labels = dataSorted.map(d => String(d.tahun));
+  const values = dataSorted.map(d => d.jumlah);
+
+  const ctx = document.getElementById('chartDetail');
+  if (!ctx) return;
+
+  if (chartDetail) chartDetail.destroy();
+  chartDetail = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Jumlah Penduduk (jiwa)',
+        data: values,
+        tension: 0.25,
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: (c) => ' ' + formatNumber(c.parsed.y) + ' jiwa'
+          }
+        },
+        legend: { display: true }
+      },
+      scales: {
+        y: {
+          beginAtZero: false,
+          ticks: { callback: (v)=> formatNumber(v) }
+        }
+      }
+    }
+  });
+}
+
+// ====== WIRE UP UI ======
+document.addEventListener('DOMContentLoaded', () => {
+  // Isi dropdown (opsional): pilih subset tahun kalau mau
+  const sel = document.getElementById('selectKecamatan');
+  if (sel) {
+    sel.innerHTML = '<option value="">Semua tahun</option>' +
+      [...new Set(DATA_BPS.map(d=>d.tahun))].sort((a,b)=>a-b)
+      .map(t=> `<option value="${t}">${t}</option>`).join('');
+
+    sel.addEventListener('change', () => {
+      // Contoh filter satu tahun (jika dipilih)
+      const tahun = sel.value ? Number(sel.value) : null;
+      if (!tahun) { renderPendudukChart(); return; }
+      const ctx = document.getElementById('chartDetail');
+      if (!ctx) return;
+
+      const row = DATA_BPS.find(d=>d.tahun===tahun);
+      const labels = [String(tahun)];
+      const values = [row ? row.jumlah : 0];
+
+      if (chartDetail) chartDetail.destroy();
+      chartDetail = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets: [{ label:'Jumlah Penduduk (jiwa)', data: values }] },
+        options: {
+          responsive:true, maintainAspectRatio:false,
+          scales:{ y:{ beginAtZero:false, ticks:{ callback:(v)=> formatNumber(v) } } },
+          plugins:{ tooltip:{ callbacks:{ label:(c)=> ' ' + formatNumber(c.parsed.y) + ' jiwa' } } }
+        }
+      });
+    });
+  }
+
+  // Tombol Muat Ulang
+  const btn = document.getElementById('btn-refresh-chart');
+  if (btn) btn.addEventListener('click', renderPendudukChart);
+
+  // Render pertama kali
+  renderPendudukChart();
+});
     </section>
 
     <!-- TAB: DATA -->
