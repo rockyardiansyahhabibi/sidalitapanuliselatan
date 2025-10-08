@@ -179,8 +179,8 @@ const SHEET_ID = "1m3jITIs6dLgWQBrLwt-uKWHbGR8O88s1RNzmGQVwwJo"; // Sheet kamu
 // Sesuaikan GID jika berbeda (lihat ?gid=... pada tiap tab sheet)
 const GIDS = {
   camat: 0,
-  lurah: 1047805166,
-  kepling: 1542422789
+  lurah: 785277710,
+  kepling: 942218442
 };
 
 /* ===== UTIL ===== */
@@ -255,9 +255,9 @@ function renderCharts({lurah, kepling}){
 /* ===== PIPELINE ===== */
 async function loadRingkasan(){
   const [camat, lurah, kepling] = await Promise.all([
-    fetchCSV(csvUrl(SHEET_ID, GIDS.camat)),
-    fetchCSV(csvUrl(SHEET_ID, GIDS.lurah)),
-    fetchCSV(csvUrl(SHEET_ID, GIDS.kepling))
+    fetchCSV(csvUrl(1m3jITIs6dLgWQBrLwt-uKWHbGR8O88s1RNzmGQVwwJo, 0)),
+    fetchCSV(csvUrl(1m3jITIs6dLgWQBrLwt-uKWHbGR8O88s1RNzmGQVwwJo, 785277710)),
+    fetchCSV(csvUrl(1m3jITIs6dLgWQBrLwt-uKWHbGR8O88s1RNzmGQVwwJo, 942218442))
   ]);
   const data = { camat, lurah, kepling };
   renderStats(data);
@@ -483,7 +483,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // GID contoh: sesuaikan dengan Sheet Anda
-  const GIDS = { camat: 0, lurah: 1047805166, kepling: 1542422789 };
+  const GIDS = { camat: 0, lurah: 785277710, kepling: 942218442 };
 
   async function getSheetData(){
     // MODE 1: via CSV publish
