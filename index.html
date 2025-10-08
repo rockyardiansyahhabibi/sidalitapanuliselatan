@@ -191,8 +191,6 @@
 </section>
 <!-- ========== /RINGKASAN ========== -->
 
-
-
    <section id="tab-grafik" class="card" hidden>
   <div class="section-title">
     <h2>Grafik Jumlah Penduduk Tapanuli Selatan</h2>
@@ -220,6 +218,115 @@
       <tbody></tbody>
     </table>
   </div>
+     /* ===================== DATA BPS (EMBED) ===================== *
+ * Tambahkan baris sesuai angka di tabel BPS (Subject 519).
+ * Format: { tahun: 2024, jumlah: 322377 }
+ * ------------------------------------------------------------- */
+const DATA_BPS = [
+  { tahun: 2024, jumlah: 322377 },
+  // Tambah sendiri dari tabel BPS:
+  // { tahun: 2023, jumlah: 319000 },
+  // { tahun: 2022, jumlah: 317500 },
+  // { tahun: 2021, jumlah: 316200 },
+  // { tahun: 2020, jumlah: 314800 },
+];
+
+/* ======================== UTILITAS =========================== */
+function formatNumber(n){ return new Intl.NumberFormat('id-ID').format(n); }
+let chartDetail = null;
+
+function populateTable() {
+  const tb = document.querySelector('#tblPenduduk tbody');
+  if(!tb) return;
+  const rows = [...DATA_BPS].sort((a,b)=>a.tahun-b.tahun)
+    .map(d => `<tr>
+      <td style="padding:8px;border-bottom:1px solid var(--line)">${d.tahun}</td>
+      <td style="padding:8px;border-bottom:1px solid var(--line)">${formatNumber(d.jumlah)}</td>
+    </tr>`).join('');
+  tb.innerHTML = rows || `<tr><td colspan="2" style="padding:8px" class="muted">Belum ada data.</td></tr>`;
+}
+
+/* ===================== RENDER CHART ========================== */
+function renderAllYears() {
+  const dataSorted = [...DATA_BPS].sort((a,b)=> a.tahun - b.tahun);
+  const labels = dataSorted.map(d => String(d.tahun));
+  const values = dataSorted.map(d => d.jumlah);
+  const ctx = document.getElementById('chartDetail');
+  if(!ctx) return;
+
+  if(chartDetail) chartDetail.destroy();
+  chartDetail = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Jumlah Penduduk (jiwa)',
+        data: values,
+        tension: 0.25,
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        tooltip: { callbacks: { label: c => ' ' + formatNumber(c.parsed.y) + ' jiwa' } }
+      },
+      scales: { y: { ticks: { callback: v => formatNumber(v) } } }
+    }
+  });
+}
+
+function renderSingleYear(tahun) {
+  const row = DATA_BPS.find(d => d.tahun === tahun);
+  const ctx = document.getElementById('chartDetail');
+  if(!ctx) return;
+
+  if(chartDetail) chartDetail.destroy();
+  chartDetail = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: [String(tahun)],
+      datasets: [{ label: 'Jumlah Penduduk (jiwa)', data: [row ? row.jumlah : 0] }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        tooltip: { callbacks: { label: c => ' ' + formatNumber(c.parsed.y) + ' jiwa' } }
+      },
+      scales: { y: { ticks: { callback: v => formatNumber(v) } } }
+    }
+  });
+}
+
+/* ======================== INIT/WIRING ======================== */
+function initGrafikPenduduk() {
+  // Isi dropdown tahun
+  const sel = document.getElementById('selectTahun');
+  if (sel) {
+    const years = [...new Set(DATA_BPS.map(d=>d.tahun))].sort((a,b)=>a-b);
+    sel.innerHTML = '<option value="">Semua tahun</option>' +
+      years.map(t=> `<option value="${t}">${t}</option>`).join('');
+    sel.addEventListener('change', ()=>{
+      const val = sel.value ? Number(sel.value) : null;
+      if (val) renderSingleYear(val); else renderAllYears();
+    });
+  }
+
+  // Tombol muat ulang
+  const btn = document.getElementById('btn-refresh-chart');
+  if (btn) btn.addEventListener('click', ()=>{
+    const v = (document.getElementById('selectTahun')||{}).value;
+    if (v) renderSingleYear(Number(v)); else renderAllYears();
+  });
+
+  // Tabel kecil & render pertama
+  populateTable();
+  renderAllYears();
+}
+
+document.addEventListener('DOMContentLoaded', initGrafikPenduduk);
 </section>
     <!-- TAB: DATA -->
     <section id="tab-data" class="card" hidden>
