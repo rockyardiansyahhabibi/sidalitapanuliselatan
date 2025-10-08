@@ -136,28 +136,147 @@
   </aside>
 
   <main>
-    <!-- TAB: RINGKASAN -->
-    <section id="tab-ringkasan" class="card">
-      <div class="section-title">
-        <h2>Ringkasan Data</h2>
-        <div class="badge" id="badge-updated">Terakhir sinkron: –</div>
+<section id="tab-ringkasan" class="card">
+  <div class="section-title">
+    <h2>Ringkasan Data</h2>
+    <div class="badge" id="rk-last-sync">Terakhir sinkron: –</div>
+  </div>
+
+  <div class="stats mb16" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+    <div class="stat" style="padding:14px;border:1px solid #253028;border-radius:14px;background:#131a15">
+      <div class="label" style="color:#7a8a7f;font-size:12px">Kecamatan</div>
+      <div class="value" id="rk-kec" style="font:700 28px/1 Inter,system-ui">—</div>
+    </div>
+    <div class="stat" style="padding:14px;border:1px solid #253028;border-radius:14px;background:#131a15">
+      <div class="label" style="color:#7a8a7f;font-size:12px">Kelurahan/Desa</div>
+      <div class="value" id="rk-kel" style="font:700 28px/1 Inter,system-ui">—</div>
+    </div>
+    <div class="stat" style="padding:14px;border:1px solid #253028;border-radius:14px;background:#131a15">
+      <div class="label" style="color:#7a8a7f;font-size:12px">Lingkungan/Dusun</div>
+      <div class="value" id="rk-lk" style="font:700 28px/1 Inter,system-ui">—</div>
+    </div>
+  </div>
+
+  <div class="grid" style="display:grid;grid-template-columns:repeat(12,1fr);gap:16px">
+    <div class="card" style="grid-column:span 7;border:1px solid #253028;border-radius:16px;padding:16px;background:#141a16">
+      <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <strong>Sebaran Kel/Desa per Kecamatan</strong><span style="color:#7a8a7f">Sumber: Sheet</span>
       </div>
-      <div class="stats mb16">
-        <div class="stat"><div class="label">Kecamatan</div><div class="value" id="stat-kec">—</div></div>
-        <div class="stat"><div class="label">Kelurahan/Desa</div><div class="value" id="stat-kel">—</div></div>
-        <div class="stat"><div class="label">Lingkungan/Dusun</div><div class="value" id="stat-lk">—</div></div>
+      <canvas id="rk-chart-sebaran" height="220"></canvas>
+    </div>
+    <div class="card" style="grid-column:span 5;border:1px solid #253028;border-radius:16px;padding:16px;background:#141a16">
+      <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <strong>Komposisi Wilayah</strong><span style="color:#7a8a7f">Kel/Desa vs Lingkungan</span>
       </div>
-      <div class="grid">
-        <div class="card" style="grid-column: span 7">
-          <div class="section-title"><strong>Sebaran Data per Kecamatan</strong><span class="muted">Sumber: Sheet</span></div>
-          <canvas id="chartSebaran" height="220"></canvas>
-        </div>
-        <div class="card" style="grid-column: span 5">
-          <div class="section-title"><strong>Komposisi Wilayah</strong><span class="muted">Proporsi kel/desa</span></div>
-          <canvas id="chartKomposisi" height="220"></canvas>
-        </div>
-      </div>
-    </section>
+      <canvas id="rk-chart-komposisi" height="220"></canvas>
+    </div>
+  </div>
+</section>
+
+<script>
+/* ===== KONFIGURASI ===== */
+const SHEET_ID = "1m3jITIs6dLgWQBrLwt-uKWHbGR8O88s1RNzmGQVwwJo"; // Sheet kamu
+// Sesuaikan GID jika berbeda (lihat ?gid=... pada tiap tab sheet)
+const GIDS = {
+  camat: 0,
+  lurah: 1047805166,
+  kepling: 1542422789
+};
+
+/* ===== UTIL ===== */
+function csvUrl(sheetId, gid){
+  return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&id=${sheetId}&gid=${gid}`;
+}
+async function fetchCSV(url){
+  const res = await fetch(url, { cache: "no-store" });
+  if(!res.ok) throw new Error("Gagal fetch CSV: " + url);
+  const text = await res.text();
+  // Parser sederhana: cocok untuk data tanpa koma di dalam sel
+  return text.split(/\r?\n/).filter(Boolean).map(r => r.split(","));
+}
+function setLastSync(){
+  const el = document.getElementById("rk-last-sync");
+  if(el) el.textContent = "Terakhir sinkron: " + new Date().toLocaleString("id-ID");
+}
+function countByKecamatan(lurahRows){
+  if(!lurahRows || lurahRows.length < 2) return [];
+  const head = lurahRows[0];
+  const idxKec = head.findIndex(h => /kecamatan/i.test(h));
+  if(idxKec < 0) return [];
+  const map = new Map();
+  for(let i=1;i<lurahRows.length;i++){
+    const kec = (lurahRows[i][idxKec] || "").trim();
+    if(!kec) continue;
+    map.set(kec, (map.get(kec)||0) + 1);
+  }
+  return [...map.entries()].sort((a,b)=> b[1]-a[1]).slice(0,12);
+}
+
+/* ===== RENDER ===== */
+let chartSebaran, chartKomposisi;
+
+function renderStats({camat, lurah, kepling}){
+  const kecCount = countByKecamatan(lurah).length;
+  const kelCount = Math.max(0, (lurah?.length || 1) - 1);
+  const lkCount  = Math.max(0, (kepling?.length || 1) - 1);
+  const set = (id,val)=>{ const el=document.getElementById(id); if(el) el.textContent = val; };
+  set("rk-kec", kecCount);
+  set("rk-kel", kelCount);
+  set("rk-lk",  lkCount);
+}
+
+function renderCharts({lurah, kepling}){
+  const elBar = document.getElementById("rk-chart-sebaran");
+  const elPie = document.getElementById("rk-chart-komposisi");
+  if(!elBar || !elPie) return;
+
+  const byKec = countByKecamatan(lurah);
+  const labels = byKec.map(x=>x[0]);
+  const values = byKec.map(x=>x[1]);
+
+  if(chartSebaran) chartSebaran.destroy();
+  chartSebaran = new Chart(elBar, {
+    type: "bar",
+    data: { labels, datasets: [{ label: "Jumlah Kel/Desa", data: values }] },
+    options: { responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } }
+  });
+
+  const kel = Math.max(0, (lurah?.length || 1) - 1);
+  const lk  = Math.max(0, (kepling?.length || 1) - 1);
+
+  if(chartKomposisi) chartKomposisi.destroy();
+  chartKomposisi = new Chart(elPie, {
+    type: "doughnut",
+    data: { labels:["Kel/Desa","Lingkungan/Dusun"], datasets:[{ data:[kel, lk] }] },
+    options: { responsive:true, maintainAspectRatio:false }
+  });
+}
+
+/* ===== PIPELINE ===== */
+async function loadRingkasan(){
+  const [camat, lurah, kepling] = await Promise.all([
+    fetchCSV(csvUrl(SHEET_ID, GIDS.camat)),
+    fetchCSV(csvUrl(SHEET_ID, GIDS.lurah)),
+    fetchCSV(csvUrl(SHEET_ID, GIDS.kepling))
+  ]);
+  const data = { camat, lurah, kepling };
+  renderStats(data);
+  renderCharts(data);
+  setLastSync();
+}
+
+/* ===== INIT ===== */
+document.addEventListener("DOMContentLoaded", () => {
+  loadRingkasan().catch(err => {
+    console.error(err);
+    ["rk-kec","rk-kel","rk-lk"].forEach(id=>{
+      const el=document.getElementById(id); if(el) el.textContent="—";
+    });
+  });
+});
+</script>
+<!-- ===== /RINGKASAN ===== -->
+
 
     <!-- TAB: GRAFIK -->
     <section id="tab-grafik" class="card" hidden>
