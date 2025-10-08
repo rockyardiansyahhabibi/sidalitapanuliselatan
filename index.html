@@ -136,146 +136,63 @@
   </aside>
 
   <main>
+<!-- ========== RINGKASAN: Kabupaten Tapanuli Selatan (static) ========== -->
 <section id="tab-ringkasan" class="card">
   <div class="section-title">
-    <h2>Ringkasan Data</h2>
-    <div class="badge" id="rk-last-sync">Terakhir sinkron: –</div>
+    <h2>Kabupaten Tapanuli Selatan</h2>
+    <div class="badge">Data per: 30 Juni 2024</div>
   </div>
 
+  <!-- Kartu angka cepat -->
   <div class="stats mb16" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
     <div class="stat" style="padding:14px;border:1px solid #253028;border-radius:14px;background:#131a15">
-      <div class="label" style="color:#7a8a7f;font-size:12px">Kecamatan</div>
-      <div class="value" id="rk-kec" style="font:700 28px/1 Inter,system-ui">—</div>
+      <div class="label" style="color:#7a8a7f;font-size:12px">Luas Wilayah</div>
+      <div class="value" style="font:700 28px/1 Inter,system-ui">6.030,47 km²</div>
     </div>
     <div class="stat" style="padding:14px;border:1px solid #253028;border-radius:14px;background:#131a15">
-      <div class="label" style="color:#7a8a7f;font-size:12px">Kelurahan/Desa</div>
-      <div class="value" id="rk-kel" style="font:700 28px/1 Inter,system-ui">—</div>
+      <div class="label" style="color:#7a8a7f;font-size:12px">Penduduk</div>
+      <div class="value" style="font:700 28px/1 Inter,system-ui">322.377 jiwa</div>
     </div>
     <div class="stat" style="padding:14px;border:1px solid #253028;border-radius:14px;background:#131a15">
-      <div class="label" style="color:#7a8a7f;font-size:12px">Lingkungan/Dusun</div>
-      <div class="value" id="rk-lk" style="font:700 28px/1 Inter,system-ui">—</div>
+      <div class="label" style="color:#7a8a7f;font-size:12px">Ibu Kota</div>
+      <div class="value" style="font:700 28px/1 Inter,system-ui">Sipirok</div>
     </div>
   </div>
 
+  <!-- Dua kolom: narasi singkat & fakta kunci -->
   <div class="grid" style="display:grid;grid-template-columns:repeat(12,1fr);gap:16px">
     <div class="card" style="grid-column:span 7;border:1px solid #253028;border-radius:16px;padding:16px;background:#141a16">
       <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <strong>Sebaran Kel/Desa per Kecamatan</strong><span style="color:#7a8a7f">Sumber: Sheet</span>
+        <strong>Gambaran Singkat</strong><span class="muted" style="color:#7a8a7f">Provinsi Sumatera Utara</span>
       </div>
-      <canvas id="rk-chart-sebaran" height="220"></canvas>
+      <p class="muted" style="color:#cbd5ce;margin:0">
+        Kabupaten Tapanuli Selatan adalah kabupaten di Provinsi Sumatera Utara dengan ibu kota di <b>Sipirok</b>.
+        Setelah pemekaran wilayah (Mandailing Natal, Padang Lawas Utara, Padang Lawas, dan Kota Padangsidimpuan),
+        pusat pemerintahan berpindah dari Padangsidimpuan ke Sipirok. Motto daerah: <i>Sahata saoloan</i>
+        (Batak Angkola) yang bermakna “Seiya sekata”. Bahasa yang digunakan antara lain Indonesia (resmi)
+        dan Batak (Angkola, Mandailing, Toba).
+      </p>
     </div>
+
     <div class="card" style="grid-column:span 5;border:1px solid #253028;border-radius:16px;padding:16px;background:#141a16">
       <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <strong>Komposisi Wilayah</strong><span style="color:#7a8a7f">Kel/Desa vs Lingkungan</span>
+        <strong>Fakta Kunci</strong><span class="muted" style="color:#7a8a7f">Sumber: Wikipedia</span>
       </div>
-      <canvas id="rk-chart-komposisi" height="220"></canvas>
+      <ul style="margin:0;padding-left:18px;line-height:1.6">
+        <li><b>Kecamatan</b>: 15</li>
+        <li><b>Kelurahan</b>: 36 • <b>Desa</b>: 212</li>
+        <li><b>Kepadatan</b>: ±53 jiwa/km² (2024)</li>
+        <li><b>Zona waktu</b>: WIB (UTC+7)</li>
+        <li><b>Kendaraan</b>: BB</li>
+        <li><b>Situs resmi</b>: <a href="https://tapselkab.go.id" target="_blank" rel="noopener">tapselkab.go.id</a></li>
+      </ul>
     </div>
   </div>
 </section>
+<!-- ========== /RINGKASAN ========== -->
 
-<script>
-/* ===== KONFIGURASI ===== */
-const SHEET_ID = "1m3jITIs6dLgWQBrLwt-uKWHbGR8O88s1RNzmGQVwwJo"; // Sheet kamu
-// Sesuaikan GID jika berbeda (lihat ?gid=... pada tiap tab sheet)
-const GIDS = {
-  camat: 0,
-  lurah: 785277710,
-  kepling: 942218442
-};
 
-/* ===== UTIL ===== */
-function csvUrl(sheetId, gid){
-  return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&id=${sheetId}&gid=${gid}`;
-}
-async function fetchCSV(url){
-  const res = await fetch(url, { cache: "no-store" });
-  if(!res.ok) throw new Error("Gagal fetch CSV: " + url);
-  const text = await res.text();
-  // Parser sederhana: cocok untuk data tanpa koma di dalam sel
-  return text.split(/\r?\n/).filter(Boolean).map(r => r.split(","));
-}
-function setLastSync(){
-  const el = document.getElementById("rk-last-sync");
-  if(el) el.textContent = "Terakhir sinkron: " + new Date().toLocaleString("id-ID");
-}
-function countByKecamatan(lurahRows){
-  if(!lurahRows || lurahRows.length < 2) return [];
-  const head = lurahRows[0];
-  const idxKec = head.findIndex(h => /kecamatan/i.test(h));
-  if(idxKec < 0) return [];
-  const map = new Map();
-  for(let i=1;i<lurahRows.length;i++){
-    const kec = (lurahRows[i][idxKec] || "").trim();
-    if(!kec) continue;
-    map.set(kec, (map.get(kec)||0) + 1);
-  }
-  return [...map.entries()].sort((a,b)=> b[1]-a[1]).slice(0,12);
-}
 
-/* ===== RENDER ===== */
-let chartSebaran, chartKomposisi;
-
-function renderStats({camat, lurah, kepling}){
-  const kecCount = countByKecamatan(lurah).length;
-  const kelCount = Math.max(0, (lurah?.length || 1) - 1);
-  const lkCount  = Math.max(0, (kepling?.length || 1) - 1);
-  const set = (id,val)=>{ const el=document.getElementById(id); if(el) el.textContent = val; };
-  set("rk-kec", kecCount);
-  set("rk-kel", kelCount);
-  set("rk-lk",  lkCount);
-}
-
-function renderCharts({lurah, kepling}){
-  const elBar = document.getElementById("rk-chart-sebaran");
-  const elPie = document.getElementById("rk-chart-komposisi");
-  if(!elBar || !elPie) return;
-
-  const byKec = countByKecamatan(lurah);
-  const labels = byKec.map(x=>x[0]);
-  const values = byKec.map(x=>x[1]);
-
-  if(chartSebaran) chartSebaran.destroy();
-  chartSebaran = new Chart(elBar, {
-    type: "bar",
-    data: { labels, datasets: [{ label: "Jumlah Kel/Desa", data: values }] },
-    options: { responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } }
-  });
-
-  const kel = Math.max(0, (lurah?.length || 1) - 1);
-  const lk  = Math.max(0, (kepling?.length || 1) - 1);
-
-  if(chartKomposisi) chartKomposisi.destroy();
-  chartKomposisi = new Chart(elPie, {
-    type: "doughnut",
-    data: { labels:["Kel/Desa","Lingkungan/Dusun"], datasets:[{ data:[kel, lk] }] },
-    options: { responsive:true, maintainAspectRatio:false }
-  });
-}
-
-/* ===== PIPELINE ===== */
-async function loadRingkasan(){
-  const [camat, lurah, kepling] = await Promise.all([
-    fetchCSV(csvUrl(1m3jITIs6dLgWQBrLwt-uKWHbGR8O88s1RNzmGQVwwJo, 0)),
-    fetchCSV(csvUrl(1m3jITIs6dLgWQBrLwt-uKWHbGR8O88s1RNzmGQVwwJo, 785277710)),
-    fetchCSV(csvUrl(1m3jITIs6dLgWQBrLwt-uKWHbGR8O88s1RNzmGQVwwJo, 942218442))
-  ]);
-  const data = { camat, lurah, kepling };
-  renderStats(data);
-  renderCharts(data);
-  setLastSync();
-}
-
-/* ===== INIT ===== */
-document.addEventListener("DOMContentLoaded", () => {
-  loadRingkasan().catch(err => {
-    console.error(err);
-    ["rk-kec","rk-kel","rk-lk"].forEach(id=>{
-      const el=document.getElementById(id); if(el) el.textContent="—";
-    });
-  });
-});
-</script>
-<!-- ===== /RINGKASAN ===== -->
     <!-- TAB: GRAFIK -->
     <section id="tab-grafik" class="card" hidden>
       <div class="section-title">
