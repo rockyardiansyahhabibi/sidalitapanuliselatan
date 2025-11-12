@@ -338,61 +338,33 @@ document.addEventListener('DOMContentLoaded', renderGrafikPenduduk);
   </div>
   </section>
     <!-- TAB: KEGIATAN -->
-<section id="tab-kegiatan" class="card" hidden
-         style="background:var(--card);border:1px solid var(--line);border-radius:16px">
-  <div class="section-title">
-    <h2>Unggah Kegiatan Kecamatan</h2>
-    <!-- badge "wait" pakai varian terang -->
-    <div class="badge wait"
-         style="border-color:#f1e0b3;color:#7a5a00;background:#fff8df">Status default: Menunggu</div>
-  </div>
-
-  <div class="grid" style="display:grid;grid-template-columns:repeat(12,1fr);gap:16px">
-    <!-- Kartu kiri -->
-    <div class="card" style="grid-column: span 7; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px">
-      <div class="field mb12">
-        <label>Nama Penanggung Jawab</label>
-        <input class="input" id="fNama" placeholder="Nama lengkap"/>
+<section id="tab-kegiatan" class="card" hidden>
+      <div class="section-title">
+        <h2>Unggah Kegiatan Kecamatan</h2>
+        <div class="badge wait">Status default: Menunggu</div>
+</div>
+      <div class="grid">
+        <div class="card" style="grid-column: span 7">
+          <div class="field mb12">
+            <label>Nama Penanggung Jawab</label>
+            <input class="input" id="fNama" placeholder="Nama lengkap"/>
+          </div>
+          <div class="grid mb12" style="grid-template-columns: 1fr 1fr; gap:12px">
+            <div class="field"><label>Tanggal</label><input class="input" id="fTanggal" type="date"/></div>
+            <div class="field"><label>Kecamatan</label><input class="input" id="fKec" placeholder="Contoh: Batang Toru"/></div>
+          </div>
+          <div class="field mb12"><label>Deskripsi</label><textarea id="fDesk" placeholder="Ringkas kegiatan"></textarea></div>
+          <div class="field mb12"><label>Lampiran (bisa multi)</label><input class="input" id="fFiles" type="file" multiple accept=".pdf,.jpg,.jpeg,.png"/></div>
+          <div class="toolbar">
+            <button class="btn primary" id="btnUpload">Kirim</button>
+            <div class="muted" id="uploadHint">Ukuran maks 10 MB per file</div>
+          </div>
+ <div class="card" style="grid-column: span 5">
+          <div class="section-title"><strong>Riwayat Kegiatan Terbaru</strong><button class="btn" id="btnReloadKeg">Muat</button></div>
+          <div id="listKegiatan" class="muted">Belum ada data.</div>
+ </div>
       </div>
-
-      <div class="grid mb12" style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
-        <div class="field">
-          <label>Tanggal</label>
-          <input class="input" id="fTanggal" type="date"/>
-        </div>
-        <div class="field">
-          <label>Kecamatan</label>
-          <input class="input" id="fKec" placeholder="Contoh: Batang Toru"/>
-        </div>
-      </div>
-
-      <div class="field mb12">
-        <label>Deskripsi</label>
-        <!-- tambahkan class input agar tidak gelap -->
-        <textarea class="input" id="fDesk" placeholder="Ringkas kegiatan"></textarea>
-      </div>
-
-      <div class="field mb12">
-        <label>Lampiran (bisa multi)</label>
-        <input class="input" id="fFiles" type="file" multiple accept=".pdf,.jpg,.jpeg,.png"/>
-      </div>
-
-      <div class="toolbar" style="display:flex;gap:10px;align-items:center">
-        <button class="btn primary" id="btnUpload">Kirim</button>
-        <div class="muted" id="uploadHint" style="color:var(--muted)">Ukuran maks 10 MB per file</div>
-      </div>
-    </div>
-
-    <!-- Kartu kanan -->
-    <div class="card" style="grid-column: span 5; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px">
-      <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <strong>Riwayat Kegiatan Terbaru</strong>
-        <button class="btn" id="btnReloadKeg">Muat</button>
-      </div>
-      <div id="listKegiatan" class="muted" style="color:var(--muted)">Belum ada data.</div>
-    </div>
-  </div>
-</section>
+    </section>
 
 
     <!-- TAB: PENGUMUMAN -->
