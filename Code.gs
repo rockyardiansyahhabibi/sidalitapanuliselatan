@@ -1,145 +1,706 @@
-// == SiDali Tapsel Web App (Google Apps Script) ==
-// Fungsinya: menerima unggahan kegiatan (multipart/form-data), simpan ke Google Drive,
-// catat metadata ke Google Sheet, kirim notifikasi email, dan handle update status.
-
-const CONFIG = {
-  // Spreadsheet untuk metadata (gunakan spreadsheet yang sama atau khusus).
-  SPREADSHEET_ID: 'PASTE_SPREADSHEET_ID_HERE',     // <-- ganti dengan Spreadsheet ID kamu
-  SHEET_NAME: 'Kegiatan',                           // sheet "Kegiatan" akan dibuat jika belum ada
-  // Folder Drive untuk penyimpanan lampiran kegiatan.
-  // Jika kosong, script akan membuat folder bernama "SiDali-Kegiatan" di My Drive.
-  DRIVE_FOLDER_ID: '',                               // <-- opsional: isi folder ID jika sudah ada
-  // Email notifikasi saat ada unggahan baru
-  NOTIFY_EMAIL: 'PASTE_YOUR_EMAIL_HERE',            // <-- ganti email kamu
-  // Token admin untuk mengubah status (approve/reject) via endpoint
-  ADMIN_TOKEN: 'SIDALI-ADMIN-2025'
-};
-
-function _ensureSheet() {
-  const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-  let sh = ss.getSheetByName(CONFIG.SHEET_NAME);
-  if (!sh) {
-    sh = ss.insertSheet(CONFIG.SHEET_NAME);
-    sh.appendRow(['timestamp','id','status','nama','tanggal','kecamatan','deskripsi','fileNames','fileUrls','fileIds','editorEmail']);
-  } else {
-    const headers = sh.getRange(1,1,1,sh.getMaxColumns()).getValues()[0];
-    if (!headers || headers[0] !== 'timestamp') {
-      sh.clear();
-      sh.appendRow(['timestamp','id','status','nama','tanggal','kecamatan','deskripsi','fileNames','fileUrls','fileIds','editorEmail']);
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SiDali Tapsel – Sistem Digitalisasi Kecamatan Tapanuli Selatan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <style>
+    :root{
+      /* Hijau keemasan */
+      --bg:#0f1310;          /* background gelap elegan */
+      --card:#141a16;        /* kartu */
+      --muted:#7a8a7f;       /* teks sekunder */
+      --text:#eef3ee;        /* teks utama */
+      --gold:#d8b45b;        /* aksen keemasan */
+      --green:#1b7d5b;       /* aksen hijau */
+      --line:#253028;        /* garis */
+      --danger:#e25555;
+      --success:#21a465;
     }
-  }
-  return sh;
-}
-
-function _ensureFolder() {
-  if (CONFIG.DRIVE_FOLDER_ID) {
-    return DriveApp.getFolderById(CONFIG.DRIVE_FOLDER_ID);
-  }
-  const name = 'SiDali-Kegiatan';
-  const it = DriveApp.getFoldersByName(name);
-  if (it.hasNext()) return it.next();
-  return DriveApp.createFolder(name);
-}
-
-function doPost(e) {
-  try {
-    const action = (e.parameter.action || 'submit').toLowerCase();
-    if (action === 'setstatus') {
-      return _handleSetStatus(e);
+    * { box-sizing: border-box }
+    html, body { height:100% }
+    body{
+      margin:0; font-family:Inter,system-ui,Segoe UI,Roboto,Arial; color:var(--text); background:var(--bg);
+      -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale;
     }
-    // default: submit
-    return _handleSubmit(e);
-  } catch (err) {
-    const out = ContentService.createTextOutput(JSON.stringify({ ok:false, error: err && err.message ? err.message : String(err) }));
-    out.setMimeType(ContentService.MimeType.JSON);
-    return out;
+    a{ color:var(--gold); text-decoration:none }
+    a:hover{ text-decoration:underline }
+
+    /* Layout */
+    .shell{ display:grid; grid-template-columns: 280px 1fr; min-height:100vh }
+    aside{
+      border-right:1px solid var(--line); padding:20px; position:sticky; top:0; height:100vh; overflow:auto;
+      background:linear-gradient(180deg, #121813 0%, #0f1310 100%);
+    }
+    main{ padding:24px; }
+
+    /* Brand */
+    .brand{ display:flex; align-items:center; gap:12px; margin-bottom:16px }
+    .brand img{ width:40px; height:40px; object-fit:cover; border-radius:10px; border:1px solid var(--line) }
+    .brand h1{ font-size:18px; line-height:1.2; margin:0 }
+    .brand .sub{ color:var(--muted); font-size:12px }
+
+    /* Nav */
+    nav{ display:flex; flex-direction:column; gap:6px; margin-top:8px }
+    .nav-btn{
+      display:flex; align-items:center; gap:10px; width:100%; border:1px solid var(--line); background:var(--card);
+      color:var(--text); padding:10px 12px; border-radius:12px; cursor:pointer; transition:.2s ease;
+    }
+    .nav-btn .dot{ width:8px; height:8px; border-radius:99px; background:var(--line) }
+    .nav-btn.active{ border-color:var(--gold); box-shadow:0 0 0 2px #d8b45b22 inset }
+    .nav-btn:hover{ transform:translateY(-1px) }
+
+    /* Header actions */
+    .actions{ display:flex; gap:10px; margin-top:14px }
+    .btn{ display:inline-flex; align-items:center; gap:8px; border:1px solid var(--line); background:var(--card); color:var(--text);
+      padding:10px 12px; border-radius:12px; cursor:pointer; transition:.2s }
+    .btn:hover{ transform:translateY(-1px) }
+    .btn.ghost{ background:transparent }
+    .btn.primary{ background:linear-gradient(135deg, #1b7d5b, #2e9b65); border-color:#2c7e60 }
+    .btn.gold{ background:linear-gradient(135deg, #caa752, #e7c972); color:#14140f; border-color:#b89543 }
+
+    /* Cards */
+    .grid{ display:grid; grid-template-columns: repeat(12,1fr); gap:16px }
+    .card{ background:var(--card); border:1px solid var(--line); border-radius:16px; padding:16px }
+    .muted{ color:var(--muted) }
+    .section-title{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px }
+
+    /* Stats */
+    .stats{ display:grid; grid-template-columns: repeat(3,1fr); gap:12px }
+    .stat{ padding:14px; border-radius:14px; border:1px solid var(--line); background:linear-gradient(180deg,#131a15,#0f1310) }
+    .stat .label{ color:var(--muted); font-size:12px }
+    .stat .value{ font-weight:700; font-size:28px; margin-top:4px }
+
+    /* Tables */
+    table{ width:100%; border-collapse:collapse; font-size:14px }
+    thead th{ text-align:left; color:var(--muted); font-weight:600; border-bottom:1px solid var(--line); padding:10px }
+    tbody td{ border-bottom:1px solid var(--line); padding:10px; vertical-align:top }
+    .table-actions{ display:flex; gap:6px }
+
+    .toolbar{ display:flex; gap:10px; flex-wrap:wrap }
+    .field{ display:flex; flex-direction:column; gap:6px }
+    .input, select, textarea{ background:#0f1411; border:1px solid var(--line); color:var(--text); border-radius:10px; padding:10px }
+    textarea{ min-height:110px }
+
+    .right{ margin-left:auto }
+    .mt8{ margin-top:8px } .mt12{ margin-top:12px } .mt16{ margin-top:16px }
+    .mb8{ margin-bottom:8px } .mb12{ margin-bottom:12px } .mb16{ margin-bottom:16px }
+
+    /* Badges */
+    .badge{ font-size:12px; padding:4px 8px; border-radius:999px; border:1px solid var(--line); color:var(--muted) }
+    .badge.ok{ border-color:#225f46; color:#b6f3d0; background:#10221b }
+    .badge.wait{ border-color:#6b5b25; color:#ffe7a9; background:#1a160c }
+    .badge.no{ border-color:#5b2525; color:#ffc3c3; background:#1a0f0f }
+
+    /* Toast */
+    .toast{ position:fixed; right:16px; bottom:16px; z-index:9999; padding:12px 14px; border-radius:12px; border:1px solid var(--line); background:var(--card); box-shadow:0 10px 30px #0007; display:none }
+    .toast.show{ display:block }
+
+    /* Skeleton */
+    .skeleton{ position:relative; overflow:hidden; background:#111512; border-radius:10px; height:14px }
+    .skeleton::after{ content:""; position:absolute; inset:0; background:linear-gradient(90deg,transparent, #ffffff22, transparent); transform:translateX(-100%); animation:shimmer 1.3s infinite }
+    @keyframes shimmer{ 100%{ transform:translateX(100%) } }
+
+    /* Responsive */
+    @media (max-width: 1024px){ .shell{ grid-template-columns: 1fr } aside{ position:static; height:auto } }
+    /* Grafik fit to desktop */
+.chart-wrap{
+  position: relative;
+  width: 100%;
+  /* Tinggi adaptif: min 420px, ideal 55vh, maks 700px */
+  height: clamp(420px, 55vh, 700px);
+}
+
+/* Bikin center & batasi lebar maksimum di layar lebar */
+@media (min-width: 1280px){
+  .chart-wrap{
+    max-width: 1100px;
+    margin-inline: auto;
   }
 }
 
-function _handleSubmit(e) {
-  const params = e.parameter || {};
-  const files = e.files || {}; // uploaded files
-  const id = params.id || 'kg_' + Date.now();
-  const nama = params.nama || '';
-  const tanggal = params.tanggal || '';
-  const kecamatan = params.kecamatan || '';
-  const deskripsi = params.deskripsi || '';
-  const editorEmail = Session.getActiveUser().getEmail() || '';
+/* Pastikan canvas ikut lebar parent */
+.chart-wrap canvas{
+  width: 100% !important;
+  height: 100% !important; /* Chart.js akan isi sesuai height parent */
+  display: block;
+}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <aside>
+    <div class="brand">
+      <img id="logo-sidali" src="https://raw.githubusercontent.com/rockyardiansyahhabibi/sidalitapanuliselatan/main/assets/sidali.PNG" alt="Logo SiDali Tapsel"/>
+      <div>
+        <h1>SiDali Tapsel</h1>
+        <div class="sub">Sistem Digitalisasi Kecamatan – Tapanuli Selatan</div>
+      </div>
+    </div>
 
-  if (!nama || !tanggal || !kecamatan) {
-    return _json({ ok:false, error: 'Nama, tanggal, dan kecamatan wajib.' });
-  }
+    <nav id="nav">
+      <button class="nav-btn active" data-tab="ringkasan"><span class="dot"></span> Ringkasan</button>
+      <button class="nav-btn" data-tab="grafik"><span class="dot"></span> Grafik</button>
+      <button class="nav-btn" data-tab="data"><span class="dot"></span> Data Wilayah</button>
+      <button class="nav-btn" data-tab="kegiatan"><span class="dot"></span> Kegiatan Kecamatan</button>
+      <button class="nav-btn" data-tab="pengumuman"><span class="dot"></span> Pengumuman</button>
+      <button class="nav-btn" data-tab="tentang"><span class="dot"></span> Tentang</button>
+    </nav>
 
-  // Save files to Drive
-  const folder = _ensureFolder();
-  const saved = [];
-  Object.keys(files).forEach(k => {
-    const fileObj = files[k];
-    // files[] arrives as files[]; files[0], files[1], etc.. GAS packs as entries
-    const blob = fileObj && fileObj.length ? fileObj[0] : fileObj; // handle array or single
-    if (blob && blob.getBytes) {
-      const f = folder.createFile(blob);
-      f.setDescription(`SiDali Kegiatan: ${nama} (${id})`);
-      saved.push({ id: f.getId(), name: f.getName(), url: f.getUrl() });
+    <div class="actions">
+      <button class="btn gold" id="btn-settings">Pengaturan</button>
+      <a class="btn ghost" href="https://docs.google.com/spreadsheets/d/1m3jITIs6dLgWQBrLwt-uKWHbGR8O88s1RNzmGQVwwJo/edit?usp=sharing" target="_blank">Data Kecamatan</a>
+    </div>
+  </aside>
+
+  <main>
+    <!-- ========== RINGKASAN: Kabupaten Tapanuli Selatan (static) ========== -->
+<section id="tab-ringkasan" class="card">
+  <div class="section-title">
+    <h2>Kabupaten Tapanuli Selatan</h2>
+    <div class="badge">Data per: 30 Juni 2024</div>
+  </div>
+
+  <!-- Kartu angka cepat -->
+  <div class="stats mb16" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+    <div class="stat" style="padding:14px;border:1px solid #253028;border-radius:14px;background:#131a15">
+      <div class="label" style="color:#7a8a7f;font-size:12px">Luas Wilayah</div>
+      <div class="value" style="font:700 28px/1 Inter,system-ui">6.030,47 km²</div>
+    </div>
+    <div class="stat" style="padding:14px;border:1px solid #253028;border-radius:14px;background:#131a15">
+      <div class="label" style="color:#7a8a7f;font-size:12px">Penduduk</div>
+      <div class="value" style="font:700 28px/1 Inter,system-ui">322.377 jiwa</div>
+    </div>
+    <div class="stat" style="padding:14px;border:1px solid #253028;border-radius:14px;background:#131a15">
+      <div class="label" style="color:#7a8a7f;font-size:12px">Ibu Kota</div>
+      <div class="value" style="font:700 28px/1 Inter,system-ui">Sipirok</div>
+    </div>
+  </div>
+
+  <!-- Dua kolom: narasi singkat & fakta kunci -->
+  <div class="grid" style="display:grid;grid-template-columns:repeat(12,1fr);gap:16px">
+    <div class="card" style="grid-column:span 7;border:1px solid #253028;border-radius:16px;padding:16px;background:#141a16">
+      <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <strong>Gambaran Singkat</strong><span class="muted" style="color:#7a8a7f">Provinsi Sumatera Utara</span>
+      </div>
+      <p class="muted" style="color:#cbd5ce;margin:0">
+        Kabupaten Tapanuli Selatan adalah kabupaten di Provinsi Sumatera Utara dengan ibu kota di <b>Sipirok</b>.
+        Setelah pemekaran wilayah (Mandailing Natal, Padang Lawas Utara, Padang Lawas, dan Kota Padangsidimpuan),
+        pusat pemerintahan berpindah dari Padangsidimpuan ke Sipirok. Motto daerah: <i>Sahata saoloan</i>
+        (Batak Angkola) yang bermakna “Seiya sekata”. Bahasa yang digunakan antara lain Indonesia (resmi)
+        dan Batak (Angkola, Mandailing, Toba).
+      </p>
+    </div>
+
+    <div class="card" style="grid-column:span 5;border:1px solid #253028;border-radius:16px;padding:16px;background:#141a16">
+      <div class="section-title" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <strong>Fakta Kunci</strong><span class="muted" style="color:#7a8a7f">Sumber: BPS</span>
+      </div>
+      <ul style="margin:0;padding-left:18px;line-height:1.6">
+        <li><b>Kecamatan</b>: 15</li>
+        <li><b>Kelurahan</b>: 36 • <b>Desa</b>: 212</li>
+        <li><b>Kepadatan</b>: ±53 jiwa/km² (2024)</li>
+        <li><b>Zona waktu</b>: WIB (UTC+7)</li>
+        <li><b>Kendaraan</b>: BB</li>
+        <li><b>Situs resmi</b>: <a href="https://tapselkab.go.id" target="_blank" rel="noopener">tapselkab.go.id</a></li>
+      </ul>
+    </div>
+  </div>
+</section>
+<section id="tab-grafik" class="card" hidden>
+  <div class="section-title">
+    <h2>Grafik Jumlah Penduduk Tapanuli Selatan</h2>
+  </div>
+
+  <div class="muted" style="margin-bottom:10px">
+    Sumber: Badan Pusat Statistik (BPS) Kab. Tapanuli Selatan.
+  </div>
+
+  <div class="chart-wrap">
+  <canvas id="chartPenduduk"></canvas>
+</div>
+</section>
+
+<!-- Tempel skrip ini sebelum </body> -->
+<script>
+/* ====== DATA BPS (isi/ubah di sini) ======
+   Tambahkan baris sesuai tabel BPS:
+   { tahun: 2023, jumlah: 319000 }, dst. */
+const DATA_BPS = [
+  { tahun: 2024, jumlah: 322377 },
+  { tahun: 2023, jumlah: 319000 },
+{ tahun: 2022, jumlah: 317500 }
+];
+
+let chartPenduduk = null;
+function formatNumber(n){ return new Intl.NumberFormat('id-ID').format(n); }
+
+function renderGrafikPenduduk(){
+  const dataSorted = [...DATA_BPS].sort((a,b)=> a.tahun - b.tahun);
+  const labels = dataSorted.map(d => String(d.tahun));
+  const values = dataSorted.map(d => d.jumlah);
+
+  const ctx = document.getElementById('chartPenduduk');
+  if(!ctx) return;
+
+if(chartPenduduk) chartPenduduk.destroy();
+  chartPenduduk = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Jumlah Penduduk (jiwa)',
+        data: values,
+        tension: 0.25,
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        tooltip: { callbacks: { label: c => ' ' + formatNumber(c.parsed.y) + ' jiwa' } },
+        legend: { display: true }
+      },
+      scales: {
+        y: { ticks: { callback: v => formatNumber(v) } }
+      }
     }
   });
-
-  const sh = _ensureSheet();
-  const ts = new Date();
-  const fileNames = saved.map(s => s.name).join(' | ');
-  const fileUrls  = saved.map(s => s.url).join(' | ');
-  const fileIds   = saved.map(s => s.id).join(' | ');
-  const status = 'pending';
-
-  sh.appendRow([
-    ts, id, status, nama, tanggal, kecamatan, deskripsi, fileNames, fileUrls, fileIds, editorEmail
-  ]);
-
-  // Send notification
-  if (CONFIG.NOTIFY_EMAIL) {
-    const subject = `[SiDali] Unggahan Kegiatan Baru (${kecamatan}) — ${nama}`;
-    const body = [
-      'Ada unggahan kegiatan baru:',
-      `Nama: ${nama}`,
-      `Tanggal: ${tanggal}`,
-      `Kecamatan: ${kecamatan}`,
-      `Deskripsi: ${deskripsi}`,
-      '',
-      `Lampiran: ${fileUrls || '(tidak ada)'}`,
-      '',
-      `ID: ${id}`,
-      `Spreadsheet: https://docs.google.com/spreadsheets/d/${CONFIG.SPREADSHEET_ID}/edit`,
-    ].join('\n');
-    MailApp.sendEmail(CONFIG.NOTIFY_EMAIL, subject, body);
-  }
-
-  return _json({ ok:true, id, status, files: saved });
 }
 
-function _handleSetStatus(e) {
-  const params = e.parameter || {};
-  const token = params.token || '';
-  if (token !== CONFIG.ADMIN_TOKEN) {
-    return _json({ ok:false, error: 'Unauthorized' }, 403);
+document.addEventListener('DOMContentLoaded', renderGrafikPenduduk);
+</script>
+<!-- ===== /TAB: GRAFIK ===== -->
+</script>
+    <!-- TAB: DATA -->
+    <section id="tab-data" class="card" hidden>
+  <div class="section-title">
+    <h2>Data Wilayah</h2>
+    <div class="toolbar right">
+      <input class="input" id="searchData" placeholder="Cari nama / kecamatan…">
+      <button class="btn" id="btn-export-csv">Unduh CSV (Lurah)</button>
+    </div>
+  </div>
+
+  <div class="badge mb12">Sumber: Data Camat, Data Lurah/Desa, Data Lingkungan/Dusun</div>
+
+  <div class="grid">
+    <!-- CAMAT -->
+    <div class="card" style="grid-column: span 12">
+      <div class="section-title">
+        <strong>Data Camat</strong>
+        <div class="toolbar right">
+          <button class="btn" id="btnDenseCamat">Mode Padat</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="tblCamat"></table>
+      </div>
+    </div>
+
+    <!-- LURAH/DESA -->
+    <div class="card" style="grid-column: span 12">
+      <div class="section-title">
+        <strong>Data Lurah/Desa</strong>
+        <div class="toolbar right">
+          <button class="btn" id="btnDenseLurah">Mode Padat</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="tblLurah"></table>
+      </div>
+    </div>
+
+    <!-- KEPLING/LINGKUNGAN/DUSUN -->
+    <div class="card" style="grid-column: span 12">
+      <div class="section-title">
+        <strong>Data Lingkungan/Dusun</strong>
+        <div class="toolbar right">
+          <button class="btn" id="btnDenseKepling">Mode Padat</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table id="tblKepling"></table>
+      </div>
+    </div>
+  </div>
+  </section>
+    <!-- TAB: KEGIATAN -->
+    <section id="tab-kegiatan" class="card" hidden>
+      <div class="section-title">
+        <h2>Unggah Kegiatan Kecamatan</h2>
+        <div class="badge wait">Status default: Menunggu</div>
+      </div>
+      <div class="grid">
+        <div class="card" style="grid-column: span 7">
+          <div class="field mb12">
+            <label>Nama Penanggung Jawab</label>
+            <input class="input" id="fNama" placeholder="Nama lengkap"/>
+          </div>
+          <div class="grid mb12" style="grid-template-columns: 1fr 1fr; gap:12px">
+            <div class="field"><label>Tanggal</label><input class="input" id="fTanggal" type="date"/></div>
+            <div class="field"><label>Kecamatan</label><input class="input" id="fKec" placeholder="Contoh: Batang Toru"/></div>
+          </div>
+          <div class="field mb12"><label>Deskripsi</label><textarea id="fDesk" placeholder="Ringkas kegiatan"></textarea></div>
+          <div class="field mb12"><label>Lampiran (bisa multi)</label><input class="input" id="fFiles" type="file" multiple accept=".pdf,.jpg,.jpeg,.png"/></div>
+          <div class="toolbar">
+            <button class="btn primary" id="btnUpload">Kirim</button>
+            <div class="muted" id="uploadHint">Ukuran maks 10 MB per file</div>
+          </div>
+        </div>
+        <div class="card" style="grid-column: span 5">
+          <div class="section-title"><strong>Riwayat Kegiatan Terbaru</strong><button class="btn" id="btnReloadKeg">Muat</button></div>
+          <div id="listKegiatan" class="muted">Belum ada data.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: PENGUMUMAN -->
+    <section id="tab-pengumuman" class="card" hidden>
+      <div class="section-title">
+        <h2>Pengumuman</h2>
+        <div class="toolbar right">
+          <button class="btn" id="btnReloadPeng">Muat</button>
+        </div>
+      </div>
+      <div id="listPengumuman" class="muted">Belum ada pengumuman.</div>
+    </section>
+
+    <!-- TAB: TENTANG -->
+    <section id="tab-tentang" class="card" hidden>
+      <h2>Tentang Aplikasi</h2>
+      <p class="muted">SiDali Tapsel memusatkan pembaruan data Camat, Lurah/Desa, dan Kepala Lingkungan/Dusun, serta unggah kegiatan kecamatan melalui integrasi Google Spreadsheet & Apps Script. Desain diperbarui dengan nuansa hijau‑keemasan, aksesibilitas lebih baik, dan performa yang dioptimalkan.</p>
+      <ul>
+        <li>Tema warna baru & tipografi Inter</li>
+        <li>Statistik & grafik Chart.js</li>
+        <li>Tabel responsif, pencarian, dan ekspor CSV</li>
+        <li>Form unggah kegiatan (multi‑file) dengan validasi</li>
+        <li>Toast notifikasi, skeleton loading, dan empty‑state</li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+
+<!-- Dialog Pengaturan -->
+<dialog id="dlgSettings" style="border:none; border-radius:16px; background:var(--card); color:var(--text); padding:0; max-width:720px; width:92%">
+  <form method="dialog" style="padding:16px 16px 12px">
+    <div class="section-title">
+      <h3>Pengaturan Integrasi</h3>
+      <button class="btn" value="close">Tutup</button>
+    </div>
+    <div class="grid" style="grid-template-columns: 1fr 1fr; gap:12px">
+      <div class="field">
+        <label>Spreadsheet ID</label>
+        <input class="input" id="cfgSheetId" placeholder="1m3jITIs6dL…"/>
+      </div>
+      <div class="field">
+        <label>Apps Script Endpoint</label>
+        <input class="input" id="cfgEndpoint" placeholder="https://script.google.com/macros/s/…/exec"/>
+      </div>
+      <div class="field">
+        <label>Email Admin</label>
+        <input class="input" id="cfgEmail" placeholder="rockyardiansyahhabibi@gmail.com"/>
+      </div>
+      <div class="field">
+        <label>Admin Token (opsional)</label>
+        <input class="input" id="cfgToken" placeholder="Token sementara aksi admin"/>
+      </div>
+    </div>
+    <div class="toolbar mt16">
+      <button class="btn primary" id="btnSaveCfg" type="button">Simpan</button>
+      <button class="btn" id="btnLoadAll" type="button">Muat Semua Data</button>
+    </div>
+    <p class="muted mt12">Catatan: kredensial sensitif sebaiknya tidak disimpan di browser. Lindungi endpoint dengan autentikasi berbasis email di Apps Script.</p>
+  </form>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  /***********************\
+   * KONFIG & UTILITAS   *
+  \***********************/
+  const CONFIG_KEY = 'sidali_cfg_v2';
+  const CONFIG = loadConfig();
+
+  function loadConfig(){
+    try{ return JSON.parse(localStorage.getItem(CONFIG_KEY)) || {
+      sheetId:'1m3jITIs6dLgWQBrLwt-uKWHbGR8O88s1RNzmGQVwwJo',
+      endpoint:'', adminEmail:'', token:''
+    }; }catch(e){ return { sheetId:'', endpoint:'', adminEmail:'', token:'' } }
   }
-  const id = params.id;
-  const status = (params.status || '').toLowerCase();
-  if (!id || !status || ['pending','approved','rejected'].indexOf(status) === -1) {
-    return _json({ ok:false, error: 'Param id/status tidak valid' }, 400);
+  function saveConfig(){ localStorage.setItem(CONFIG_KEY, JSON.stringify(CONFIG)); }
+
+  function toast(msg, ok=false){
+    const t=document.getElementById('toast');
+    t.textContent = msg; t.style.borderColor = ok? '#1c5f46': 'var(--line)'; t.classList.add('show');
+    setTimeout(()=>t.classList.remove('show'), 2800);
   }
-  const sh = _ensureSheet();
-  const data = sh.getDataRange().getValues(); // includes header
-  for (let r = 1; r < data.length; r++) {
-    if (String(data[r][1]) === String(id)) { // column B = id
-      sh.getRange(r+1, 3).setValue(status); // column C = status
-      return _json({ ok:true, id, status });
+
+  // Tabs
+  document.querySelectorAll('.nav-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.nav-btn').forEach(x=>x.classList.remove('active'));
+      btn.classList.add('active');
+      const tab = btn.dataset.tab;
+      document.querySelectorAll('main > section').forEach(sec=> sec.hidden = !sec.id.endsWith(tab));
+    });
+  });
+
+  // Settings dialog
+  const dlg = document.getElementById('dlgSettings');
+  document.getElementById('btn-settings').onclick = ()=>{
+    document.getElementById('cfgSheetId').value = CONFIG.sheetId || '';
+    document.getElementById('cfgEndpoint').value = CONFIG.endpoint || '';
+    document.getElementById('cfgEmail').value = CONFIG.adminEmail || '';
+    document.getElementById('cfgToken').value = CONFIG.token || '';
+    dlg.showModal();
+  }
+  document.getElementById('btnSaveCfg').onclick = ()=>{
+    CONFIG.sheetId = document.getElementById('cfgSheetId').value.trim();
+    CONFIG.endpoint = document.getElementById('cfgEndpoint').value.trim();
+    CONFIG.adminEmail = document.getElementById('cfgEmail').value.trim();
+    CONFIG.token = document.getElementById('cfgToken').value.trim();
+    saveConfig(); toast('Pengaturan disimpan', true);
+  }
+  document.getElementById('btnLoadAll').onclick = ()=>{
+    dlg.close(); loadAll();
+  }
+
+  /***********************\
+   * FETCH DATA DARI SHEET *
+  \***********************/
+  // Catatan:
+  // 1) Agar fetch dari GitHub Pages bisa membaca Sheet, publikasi-kan tiap sheet sebagai CSV (File > Share > Publish to the web > CSV)
+  //    atau gunakan Apps Script endpoint read-only yang mengembalikan JSON.
+  // 2) Di bawah ini disediakan dua mode: via CSV publish atau via Apps Script.
+
+  async function fetchCSV(csvUrl){
+    const res = await fetch(csvUrl, { cache:'no-store' });
+    if(!res.ok) throw new Error('Gagal memuat CSV');
+    const text = await res.text();
+    // parsing CSV sederhana (asumsi tidak ada koma di dalam sel)
+    return text.split(/\r?\n/).filter(Boolean).map(row=> row.split(','));
+  }
+
+  function publishCsvUrl(sheetId, gid){
+    return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&id=${sheetId}&gid=${gid}`;
+  }
+
+  // GID contoh: sesuaikan dengan Sheet Anda
+  const GIDS = { camat: 0, lurah: 785277710, kepling: 942218442 };
+
+  async function getSheetData(){
+    // MODE 1: via CSV publish
+    const [camat, lurah, kepling] = await Promise.all([
+      fetchCSV(publishCsvUrl(CONFIG.sheetId, GIDS.camat)),
+      fetchCSV(publishCsvUrl(CONFIG.sheetId, GIDS.lurah)),
+      fetchCSV(publishCsvUrl(CONFIG.sheetId, GIDS.kepling))
+    ]);
+    return { camat, lurah, kepling };
+
+    // MODE 2 (alternatif): via Apps Script
+    // const res = await fetch(`${CONFIG.endpoint}?action=readAll`, {cache:'no-store'});
+    // return res.json();
+  }
+
+  /***********************\
+   * RENDER UI            *
+  \***********************/
+  let chartSebaran, chartKomposisi, chartDetail;
+
+  function setUpdated(){ document.getElementById('badge-updated').textContent = 'Terakhir sinkron: ' + new Date().toLocaleString('id-ID'); }
+
+  function buildTable(el, rows){
+    if(!rows || !rows.length){ el.innerHTML = '<thead><tr><th>Data</th></tr></thead><tbody><tr><td class="muted">Tidak ada data</td></tr></tbody>'; return; }
+    const [header, ...body] = rows;
+    let thead = '<thead><tr>' + header.map(h=>`<th>${escapeHtml(h)}</th>`).join('') + '</tr></thead>';
+    let tbody = '<tbody>' + body.map(r=>'<tr>'+ r.map(c=>`<td>${escapeHtml(c)}</td>`).join('') + '</tr>').join('') + '</tbody>';
+    el.innerHTML = thead + tbody;
+  }
+
+  function escapeHtml(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+
+  function countByKecamatan(lurahRows){
+    const idxKec = lurahRows[0]?.findIndex(h=>/kecamatan/i.test(h)) ?? -1;
+    const map = new Map();
+    for(let i=1;i<lurahRows.length;i++){
+      const kec = (lurahRows[i][idxKec]||'').trim(); if(!kec) continue;
+      map.set(kec, (map.get(kec)||0)+1);
     }
+    return [...map.entries()].sort((a,b)=> b[1]-a[1]).slice(0,12);
   }
-  return _json({ ok:false, error: 'ID tidak ditemukan' }, 404);
-}
 
-function _json(obj, code) {
-  const out = ContentService.createTextOutput(JSON.stringify(obj));
-  out.setMimeType(ContentService.MimeType.JSON);
-  return out;
-}
+  function updateStats(data){
+    // Estimasi: hitung unik kecamatan dari sheet Lurah/Desa
+    const byKec = countByKecamatan(data.lurah);
+    const kecCount = byKec.length;
+    const kelCount = (data.lurah.length>1? data.lurah.length-1: 0);
+    const lkCount  = (data.kepling.length>1? data.kepling.length-1: 0);
+    document.getElementById('stat-kec').textContent = kecCount;
+    document.getElementById('stat-kel').textContent = kelCount;
+    document.getElementById('stat-lk').textContent = lkCount;
+  }
+
+  function renderCharts(data){
+    const ctx1 = document.getElementById('chartSebaran');
+    const ctx2 = document.getElementById('chartKomposisi');
+
+    const byKec = countByKecamatan(data.lurah);
+    const labels = byKec.map(x=>x[0]);
+    const values = byKec.map(x=>x[1]);
+
+    if(chartSebaran) chartSebaran.destroy();
+    chartSebaran = new Chart(ctx1, {
+      type:'bar', data:{ labels, datasets:[{ label:'Jumlah Kel/Desa', data: values }] },
+      options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } }
+    });
+
+    const kel = (data.lurah.length>1? data.lurah.length-1: 0);
+    const lk  = (data.kepling.length>1? data.kepling.length-1: 0);
+    if(chartKomposisi) chartKomposisi.destroy();
+    chartKomposisi = new Chart(ctx2, {
+      type:'doughnut', data:{ labels:['Kel/Desa','Lingkungan/Dusun'], datasets:[{ data:[kel, lk] }] },
+      options:{ responsive:true, maintainAspectRatio:false }
+    });
+  }
+
+  function filterRows(rows, q){
+    if(!q) return rows; q=q.toLowerCase();
+    const [head, ...body] = rows; const idx = new Set(head.map((_,i)=>i));
+    const out = body.filter(r=> r.some((c,i)=> idx.has(i) && String(c).toLowerCase().includes(q)));
+    return [head, ...out];
+  }
+
+  async function loadAll(){
+    try{
+      document.getElementById('skelCamat').style.display='block';
+      document.getElementById('skelLurah').style.display='block';
+      document.getElementById('skelKepling').style.display='block';
+      const data = await getSheetData();
+
+      // Tabel
+      buildTable(document.getElementById('tblCamat'), data.camat);
+      buildTable(document.getElementById('tblLurah'), data.lurah);
+      buildTable(document.getElementById('tblKepling'), data.kepling);
+      document.getElementById('countCamat').textContent = `${Math.max(0, data.camat.length-1)} data`;
+      document.getElementById('countLurah').textContent = `${Math.max(0, data.lurah.length-1)} data`;
+      document.getElementById('countKepling').textContent = `${Math.max(0, data.kepling.length-1)} data`;
+
+      // Charts & stats
+      updateStats(data); renderCharts(data); setUpdated();
+
+      // Dropdown kecamatan (grafik detail)
+      const byKec = countByKecamatan(data.lurah).map(x=>x[0]);
+      const sel = document.getElementById('selectKecamatan');
+      sel.innerHTML = '<option value="">Semua kecamatan</option>' + byKec.map(k=>`<option>${escapeHtml(k)}</option>`).join('');
+
+      // Hide skeleton
+      document.getElementById('skelCamat').style.display='none';
+      document.getElementById('skelLurah').style.display='none';
+      document.getElementById('skelKepling').style.display='none';
+
+      toast('Data termuat', true);
+    }catch(err){ console.error(err); toast('Gagal memuat data – periksa publikasi CSV/GID', false); }
+  }
+
+  // Pencarian Data tab
+  document.getElementById('searchData').addEventListener('input', debounce(async (e)=>{
+    try{
+      const q = e.target.value.trim();
+      const data = await getSheetData();
+      buildTable(document.getElementById('tblCamat'), filterRows(data.camat, q));
+      buildTable(document.getElementById('tblLurah'), filterRows(data.lurah, q));
+      buildTable(document.getElementById('tblKepling'), filterRows(data.kepling, q));
+    }catch(err){ /* ignore */ }
+  }, 300));
+
+  // Ekspor CSV dari tab aktif (Lurah sebagai contoh)
+  document.getElementById('btn-export-csv').onclick = async()=>{
+    try{
+      const { lurah } = await getSheetData();
+      const csv = lurah.map(r=> r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], {type:'text/csv'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'data_lurah.csv'; a.click();
+    }catch(err){ toast('Gagal ekspor CSV', false); }
+  }
+
+  // Grafik detail: sebagai contoh, re-render dengan data dummy by kecamatan
+  document.getElementById('btn-refresh-chart').onclick = async()=>{
+    try{
+      const { lurah } = await getSheetData();
+      const sel = document.getElementById('selectKecamatan').value;
+      const head = lurah[0]; const idxKec = head.findIndex(h=>/kecamatan/i.test(h));
+      const list = (sel? lurah.filter((r,i)=> i>0 && r[idxKec]===sel): lurah.slice(1)).slice(0,12);
+      const labels = list.map((r,i)=> r[1] || ('Entitas '+(i+1)));
+      const values = list.map(()=> 1); // placeholder: 1 per baris
+      if(chartDetail) chartDetail.destroy();
+      chartDetail = new Chart(document.getElementById('chartDetail'), {
+        type:'bar', data:{ labels, datasets:[{ label:'Entri', data: values }] }, options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:true } } }
+      });
+    }catch(err){ toast('Gagal memuat grafik', false); }
+  }
+
+  // Kegiatan – Upload (via Apps Script)
+  document.getElementById('btnUpload').onclick = async()=>{
+    try{
+      if(!CONFIG.endpoint){ toast('Endpoint belum diatur', false); return; }
+      const nama = document.getElementById('fNama').value.trim();
+      const tanggal = document.getElementById('fTanggal').value; const kec = document.getElementById('fKec').value.trim();
+      const desk = document.getElementById('fDesk').value.trim(); const files = document.getElementById('fFiles').files;
+      if(!nama || !tanggal || !kec || !desk){ toast('Lengkapi form', false); return; }
+      if(files.length>10){ toast('Maks 10 file', false); return; }
+      for(const f of files){ if(f.size>10*1024*1024){ toast('Maks 10MB per file', false); return; } }
+
+      const fd = new FormData();
+      fd.append('action','upload'); fd.append('nama',nama); fd.append('tanggal',tanggal); fd.append('kecamatan',kec); fd.append('deskripsi',desk);
+      for(const f of files) fd.append('files', f, f.name);
+
+      const res = await fetch(CONFIG.endpoint, { method:'POST', body: fd });
+      if(!res.ok) throw new Error('Gagal kirim');
+      const j = await res.json();
+      toast(j.message || 'Berhasil dikirim', true);
+      document.getElementById('fNama').value=''; document.getElementById('fTanggal').value=''; document.getElementById('fKec').value='';
+      document.getElementById('fDesk').value=''; document.getElementById('fFiles').value='';
+    }catch(err){ console.error(err); toast('Upload gagal', false); }
+  }
+
+  // Muat kegiatan terbaru (read-only)
+  document.getElementById('btnReloadKeg').onclick = async()=>{
+    try{
+      if(!CONFIG.endpoint){ toast('Endpoint belum diatur', false); return; }
+      const res = await fetch(CONFIG.endpoint + '?action=listKegiatan');
+      const j = await res.json();
+      const box = document.getElementById('listKegiatan');
+      if(!j || !j.data || !j.data.length){ box.textContent='Belum ada data.'; return; }
+      box.innerHTML = j.data.slice(0,10).map(x=>`<div class="mb12"><div><strong>${escapeHtml(x.kecamatan)}</strong> <span class="badge ${x.status==='Disetujui'?'ok':x.status==='Ditolak'?'no':'wait'}">${escapeHtml(x.status)}</span></div><div class="muted">${escapeHtml(x.tanggal)} • ${escapeHtml(x.nama)}</div><div>${escapeHtml(x.deskripsi)}</div></div>`).join('');
+    }catch(err){ toast('Gagal memuat kegiatan', false); }
+  }
+
+  // Pengumuman (read-only, bisa ambil dari sheet khusus)
+  document.getElementById('btnReloadPeng').onclick = async()=>{
+    try{
+      // Contoh: ambil dari Apps Script action=listPengumuman
+      if(!CONFIG.endpoint){ toast('Endpoint belum diatur', false); return; }
+      const res = await fetch(CONFIG.endpoint + '?action=listPengumuman');
+      const j = await res.json();
+      const box = document.getElementById('listPengumuman');
+      if(!j || !j.data || !j.data.length){ box.textContent='Belum ada pengumuman.'; return; }
+      box.innerHTML = j.data.map(p=>`<div class="card mb12"><div class="section-title"><strong>${escapeHtml(p.judul)}</strong><span class="muted">${escapeHtml(p.tanggal)}</span></div><div>${escapeHtml(p.isi)}</div></div>`).join('');
+    }catch(err){ toast('Gagal memuat pengumuman', false); }
+  }
+
+  // Helpers
+  function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn.apply(this,a), ms) } }
+
+  // Auto-init
+  loadAll();
+</script>
+</body>
+</html>
