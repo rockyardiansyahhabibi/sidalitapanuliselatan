@@ -10,17 +10,18 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <style>
     :root{
-      /* Hijau keemasan */
-      --bg:#0f1310;          /* background gelap elegan */
-      --card:#141a16;        /* kartu */
-      --muted:#7a8a7f;       /* teks sekunder */
-      --text:#eef3ee;        /* teks utama */
-      --gold:#d8b45b;        /* aksen keemasan */
-      --green:#1b7d5b;       /* aksen hijau */
-      --line:#253028;        /* garis */
-      --danger:#e25555;
-      --success:#21a465;
-    }
+  /* Putih elegan */
+  --bg:#f7f8fa;        /* latar halaman */
+  --card:#ffffff;      /* kartu/panel */
+  --muted:#667085;     /* teks sekunder */
+  --text:#1c2220;      /* teks utama */
+  --gold:#d8b45b;      /* aksen emas (boleh gelapkan ke #b98f2b jika ingin kontras lebih tinggi) */
+  --green:#1b7d5b;     /* aksen hijau */
+  --line:#e6e9ef;      /* garis/border */
+  --danger:#d22f2f;
+  --success:#138a57;
+}
+
     * { box-sizing: border-box }
     html, body { height:100% }
     body{
@@ -34,7 +35,7 @@
     .shell{ display:grid; grid-template-columns: 280px 1fr; min-height:100vh }
     aside{
       border-right:1px solid var(--line); padding:20px; position:sticky; top:0; height:100vh; overflow:auto;
-      background:linear-gradient(180deg, #121813 0%, #0f1310 100%);
+      background:linear-gradient(180deg, #ffffff 0%, #f6f8fb 100%);
     }
     main{ padding:24px; }
 
